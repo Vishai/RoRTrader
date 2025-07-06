@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -86,6 +84,7 @@ services:
   # Redis Commander for Redis Management (Development Only)
   redis-commander:
     image: rediscommander/redis-commander:latest
+    platform: linux/amd64
     container_name: ror-trader-redis-commander
     restart: unless-stopped
     ports:
@@ -97,12 +96,15 @@ services:
 
   # Mailhog for Email Testing (Development Only)
   mailhog:
-    image: mailhog/mailhog:latest
+    image: axllent/mailpit:latest
     container_name: ror-trader-mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP server
-      - "8025:8025" # Web UI
+      - "1026:1025" # SMTP server (changed from 1025 to avoid conflict)
+      - "8026:8025" # Web UI (changed from 8025 to avoid conflict)
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
 volumes:
   postgres_data:
