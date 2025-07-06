@@ -213,7 +213,7 @@ FOR EACH TASK:
 ├── /docs
 │   ├── constitution.md       # This document
 │   ├── PRD.md               # Product requirements
-│   ├── /transitions         # Session continuity documents
+│   ├── /transitions         # Session continuity documents (/Users/brandonarmstrong/Documents/Github/RoRTrader/docs/transitions)
 │   │   └── template.md      # Transition template
 │   ├── /security            # Security documentation
 │   │   ├── encryption.md
