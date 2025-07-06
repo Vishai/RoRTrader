@@ -1,0 +1,47 @@
+{
+  "name": "ror-trader",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-Asset Trading Bot Platform with TradingView webhook integration",
+  "author": "RoR Trader Team",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @ror-trader/web & npm run dev -w @ror-trader/api",
+    "dev:web": "npm run dev -w @ror-trader/web",
+    "dev:api": "npm run dev -w @ror-trader/api",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "test:security": "npm run test:security --workspaces",
+    "lint": "npm run lint --workspaces",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "clean": "npm run clean --workspaces && rm -rf node_modules",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prettier": "^3.0.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}
