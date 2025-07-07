@@ -10,6 +10,8 @@ import { authRoutes } from './modules/auth';
 import { demoRoutes } from './modules/demo';
 import { analysisRoutes } from './modules/analysis';
 import { strategyRoutes } from './modules/strategy';
+import { botRoutes } from './modules/bots';
+import { webhookRoutes } from './modules/webhooks';
 import { prisma } from './shared/database/prisma';
 
 // Load environment variables
@@ -79,6 +81,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/strategies', strategyRoutes);
+app.use('/api/bots', botRoutes);
+app.use('', webhookRoutes); // Webhook routes include both /webhook and /api paths
 
 // 404 handler
 app.use((req, res) => {
