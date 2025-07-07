@@ -1,10 +1,10 @@
 /**
  * Injectable decorator for dependency injection
+ * For now, just returns the class as-is
  */
 export function Injectable(): ClassDecorator {
   return (target: any) => {
-    // Mark class as injectable
-    Reflect.defineMetadata('injectable', true, target);
+    // For now, just return the target without metadata
     return target;
   };
 }

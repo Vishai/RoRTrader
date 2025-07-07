@@ -1,4 +1,3 @@
-import { Injectable } from '@/shared/decorators/injectable.decorator';
 import { TechnicalAnalysisService } from '../analysis/technical-analysis.service';
 import { logger } from '@/shared/utils/logger';
 import { prisma } from '@/shared/database/prisma';
@@ -27,7 +26,6 @@ interface ConditionResult {
   compareValue: any;
 }
 
-@Injectable()
 export class StrategyEvaluationService {
   constructor(
     private readonly technicalAnalysis: TechnicalAnalysisService
@@ -48,13 +46,7 @@ export class StrategyEvaluationService {
         where: { id: strategyId },
         include: {
           indicators: true,
-          entryConditions: {
-            where: { type: 'ENTRY' },
-            orderBy: { orderIndex: 'asc' },
-            include: { indicator: true }
-          },
-          exitConditions: {
-            where: { type: 'EXIT' },
+          conditions: {
             orderBy: { orderIndex: 'asc' },
             include: { indicator: true }
           }
@@ -72,9 +64,13 @@ export class StrategyEvaluationService {
         candles
       );
 
+      // Separate conditions by type
+      const entryConditions = strategy.conditions.filter(c => c.type === 'ENTRY');
+      const exitConditions = strategy.conditions.filter(c => c.type === 'EXIT');
+      
       // Evaluate entry conditions
       const entryResults = await this.evaluateConditions(
-        strategy.entryConditions,
+        entryConditions,
         indicatorValues,
         currentPrice,
         candles
@@ -82,7 +78,7 @@ export class StrategyEvaluationService {
 
       // Evaluate exit conditions
       const exitResults = await this.evaluateConditions(
-        strategy.exitConditions,
+        exitConditions,
         indicatorValues,
         currentPrice,
         candles

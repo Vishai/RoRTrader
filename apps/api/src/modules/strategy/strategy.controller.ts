@@ -1,15 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { Injectable } from '@/shared/decorators/injectable.decorator';
-import { Controller } from '@/shared/decorators/controller.decorator';
-import { Get, Post, Put, Delete } from '@/shared/decorators/http-methods.decorator';
 import { StrategyService } from './strategy.service';
 import { authenticate } from '@/shared/middleware/auth.middleware';
 import { validate } from '@/shared/middleware/validation.middleware';
 import { createStrategySchema, updateStrategySchema, templateFiltersSchema } from './strategy.validation';
 import { asyncHandler } from '@/shared/utils/async-handler';
 
-@Injectable()
-@Controller('/api/strategies')
 export class StrategyController {
   constructor(private readonly strategyService: StrategyService) {}
 
@@ -17,7 +12,6 @@ export class StrategyController {
    * Create a new strategy
    * POST /api/strategies
    */
-  @Post('/')
   async createStrategy(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const user = await authenticate(req);
@@ -36,7 +30,6 @@ export class StrategyController {
    * Get strategy by bot ID
    * GET /api/strategies/bot/:botId
    */
-  @Get('/bot/:botId')
   async getStrategyByBot(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const user = await authenticate(req);
@@ -55,7 +48,6 @@ export class StrategyController {
    * Get strategy by ID
    * GET /api/strategies/:id
    */
-  @Get('/:id')
   async getStrategy(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       await authenticate(req);
@@ -81,7 +73,6 @@ export class StrategyController {
    * Update strategy
    * PUT /api/strategies/:id
    */
-  @Put('/:id')
   async updateStrategy(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const user = await authenticate(req);
@@ -101,7 +92,6 @@ export class StrategyController {
    * Delete strategy
    * DELETE /api/strategies/:id
    */
-  @Delete('/:id')
   async deleteStrategy(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const user = await authenticate(req);
@@ -120,7 +110,6 @@ export class StrategyController {
    * Get available strategy templates
    * GET /api/strategies/templates
    */
-  @Get('/templates')
   async getTemplates(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const filters = validate(templateFiltersSchema, req.query);
@@ -138,7 +127,6 @@ export class StrategyController {
    * Get template by ID
    * GET /api/strategies/templates/:id
    */
-  @Get('/templates/:id')
   async getTemplate(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const { id } = req.params;
@@ -156,7 +144,6 @@ export class StrategyController {
    * Create strategy from template
    * POST /api/strategies/from-template
    */
-  @Post('/from-template')
   async createFromTemplate(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const user = await authenticate(req);

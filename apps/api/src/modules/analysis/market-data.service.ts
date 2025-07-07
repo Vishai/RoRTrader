@@ -1,4 +1,3 @@
-import { Injectable } from '@/shared/decorators/injectable.decorator';
 import { RedisService } from '@/shared/services/redis.service';
 import { logger } from '@/shared/utils/logger';
 import { CandleData } from './technical-analysis.service';
@@ -13,7 +12,6 @@ export interface MarketDataOptions {
   endTime?: number;
 }
 
-@Injectable()
 export class MarketDataService {
   private readonly CACHE_TTL = 60; // 1 minute cache
   

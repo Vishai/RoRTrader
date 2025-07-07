@@ -1,8 +1,6 @@
 import Redis from 'ioredis';
-import { Injectable } from '../decorators/injectable.decorator';
 import { logger } from '../utils/logger';
 
-@Injectable()
 export class RedisService {
   private client: Redis;
   
