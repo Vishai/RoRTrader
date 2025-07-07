@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { TokenUtil } from '@/shared/security';
+import { TokenUtil } from '@/shared/security/token';
 import { prisma } from '@/shared/database/prisma';
 
 // Extend Express Request type

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/shared/database/prisma';
 
 interface PerformancePattern {
   returnProfile: number[];
@@ -9,7 +9,7 @@ interface PerformancePattern {
 }
 
 export class PerformanceSimulator {
-  private prisma: PrismaClient;
+  private prisma = prisma;
 
   // Predefined performance patterns for demos
   private patterns: Record<string, PerformancePattern> = {
@@ -44,7 +44,7 @@ export class PerformanceSimulator {
   };
 
   constructor() {
-    this.prisma = new PrismaClient();
+    // Use shared prisma instance
   }
 
   /**
@@ -152,7 +152,7 @@ export class PerformanceSimulator {
           winningTrades: Math.floor((Math.random() * 20 + 5) * pattern.winRate),
           totalReturn: cumulativeReturn,
           sharpeRatio: pattern.sharpeRatio + (Math.random() - 0.5) * 0.5,
-          sortinRatio: pattern.sharpeRatio * 1.2,
+          sortinoRatio: pattern.sharpeRatio * 1.2,
           maxDrawdown: Math.min(drawdown, pattern.maxDrawdown),
           profitFactor: 1.5 + Math.random(),
           metricsSnapshot: {
@@ -188,14 +188,14 @@ export class PerformanceSimulator {
     const bot = await this.prisma.bot.findUnique({ where: { id: botId } });
     if (!bot) return;
 
-    const symbols = bot.assetType === 'crypto' 
+    const symbols = bot.assetType === 'CRYPTO' 
       ? ['BTC-USD', 'ETH-USD', 'SOL-USD']
       : ['AAPL', 'NVDA', 'TSLA'];
 
     for (let i = 0; i < count; i++) {
       const isWin = Math.random() < winRate;
       const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
+      const side = Math.random() > 0.5 ? 'BUY' : 'SELL';
       
       // Calculate prices to show profit/loss
       const entryPrice = 100;
@@ -203,7 +203,7 @@ export class PerformanceSimulator {
         ? entryPrice * (1 + (Math.random() * 0.05 + 0.02)) // 2-7% win
         : entryPrice * (1 - (Math.random() * 0.02 + 0.01)); // 1-3% loss
 
-      const quantity = bot.assetType === 'crypto' 
+      const quantity = bot.assetType === 'CRYPTO' 
         ? parseFloat((Math.random() * 0.1).toFixed(8))
         : Math.floor(Math.random() * 100) + 10;
 
@@ -215,9 +215,9 @@ export class PerformanceSimulator {
           side,
           orderType: 'limit',
           quantity,
-          price: side === 'buy' ? entryPrice : exitPrice,
-          executedPrice: side === 'buy' ? entryPrice : exitPrice,
-          status: 'completed',
+          price: side === 'BUY' ? entryPrice : exitPrice,
+          executedPrice: side === 'BUY' ? entryPrice : exitPrice,
+          status: 'COMPLETED',
           exchangeOrderId: `demo-${Date.now()}-${i}`,
           fees: quantity * entryPrice * 0.001,
           metadata: {

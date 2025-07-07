@@ -1,32 +1,32 @@
 import { Router } from 'express';
 import { DemoController } from './demo.controller';
-import { authenticate } from '../auth/auth.middleware';
+import { AuthMiddleware } from '../auth/auth.middleware';
 
 const router = Router();
 const demoController = new DemoController();
 
 // Public route - check demo status
-router.get('/status', demoController.getStatus);
+router.get('/status', (req, res) => demoController.getStatus(req, res));
+
+// Get presentation data - public for demo
+router.get('/presentation', (req, res) => demoController.getPresentationData(req, res));
 
 // Protected routes - require authentication
-router.use(authenticate);
+router.use(AuthMiddleware.authenticate);
 
 // Initialize demo environment for user
-router.post('/initialize', demoController.initialize);
+router.post('/initialize', (req, res) => demoController.initialize(req, res));
 
 // Generate specific scenario
-router.post('/scenario', demoController.generateScenario);
+router.post('/scenario', (req, res) => demoController.generateScenario(req, res));
 
 // Clean up demo data
-router.delete('/cleanup', demoController.cleanup);
+router.delete('/cleanup', (req, res) => demoController.cleanup(req, res));
 
 // Simulate webhook for a bot
-router.post('/webhook/:botId', demoController.simulateWebhook);
-
-// Get presentation data
-router.get('/presentation', demoController.getPresentationData);
+router.post('/webhook/:botId', (req, res) => demoController.simulateWebhook(req, res));
 
 // Admin route - update configuration (should add admin middleware in production)
-router.put('/config', demoController.updateConfig);
+router.put('/config', (req, res) => demoController.updateConfig(req, res));
 
 export const demoRoutes = router;

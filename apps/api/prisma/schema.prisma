@@ -64,6 +64,7 @@ model Bot {
   webhookSecret   String      @unique
   positionSizing  Json        // {type: 'fixed' | 'percentage', value: number}
   riskManagement  Json?       // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
+  metadata        Json?       // Additional metadata (e.g., isDemo, performance, tradeFrequency)
   status          BotStatus   @default(STOPPED)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -102,6 +103,7 @@ model WebhookLog {
   payload     Json           // Complete webhook payload
   status      WebhookStatus  @default(RECEIVED)
   errorMessage String?
+  metadata     Json?          // Additional metadata (e.g., simulated)
   processedAt DateTime?
   createdAt   DateTime       @default(now())
   
@@ -128,6 +130,7 @@ model Trade {
   exchangeOrderId String?
   fees            Decimal?    @db.Decimal(20, 8)
   errorMessage    String?
+  metadata        Json?       // Additional metadata (e.g., isDemo, pnl)
   createdAt       DateTime    @default(now())
   executedAt      DateTime?
   

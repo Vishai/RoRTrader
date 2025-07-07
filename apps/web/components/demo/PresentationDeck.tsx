@@ -210,7 +210,7 @@ export function PresentationDeck() {
               </div>
               <div>
                 <div className="text-2xl font-bold text-accent-secondary">
-                  <500ms
+                  &lt;500ms
                 </div>
                 <div className="text-sm text-text-secondary">Webhook Latency</div>
               </div>

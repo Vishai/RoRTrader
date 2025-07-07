@@ -1,67 +1,67 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/shared/database/prisma';
 import * as crypto from 'crypto';
 
 interface MockBotConfig {
   name: string;
-  assetType: 'crypto' | 'stocks';
-  exchange: 'coinbase_pro' | 'alpaca';
-  tradingMode: 'paper' | 'live';
+  assetType: 'CRYPTO' | 'STOCKS';
+  exchange: 'COINBASE_PRO' | 'ALPACA';
+  tradingMode: 'PAPER' | 'LIVE';
   performance: 'winning' | 'losing' | 'mixed';
   tradeFrequency: 'high' | 'medium' | 'low';
 }
 
 interface MockTradeData {
   symbol: string;
-  side: 'buy' | 'sell';
+  side: 'BUY' | 'SELL';
   quantity: number;
   price: number;
   executedPrice: number;
-  status: 'completed' | 'pending' | 'failed';
+  status: 'COMPLETED' | 'PENDING' | 'FAILED';
   timestamp: Date;
 }
 
 export class MockDataGenerator {
-  private prisma: PrismaClient;
+  private prisma = prisma;
 
   // Realistic bot configurations
   private botTemplates: MockBotConfig[] = [
     {
       name: 'BTC Momentum Scanner',
-      assetType: 'crypto',
-      exchange: 'coinbase_pro',
-      tradingMode: 'paper',
+      assetType: 'CRYPTO',
+      exchange: 'COINBASE_PRO',
+      tradingMode: 'PAPER',
       performance: 'winning',
       tradeFrequency: 'high'
     },
     {
       name: 'ETH Grid Trading Bot',
-      assetType: 'crypto',
-      exchange: 'coinbase_pro',
-      tradingMode: 'live',
+      assetType: 'CRYPTO',
+      exchange: 'COINBASE_PRO',
+      tradingMode: 'LIVE',
       performance: 'mixed',
       tradeFrequency: 'medium'
     },
     {
       name: 'AAPL Swing Trader',
-      assetType: 'stocks',
-      exchange: 'alpaca',
-      tradingMode: 'paper',
+      assetType: 'STOCKS',
+      exchange: 'ALPACA',
+      tradingMode: 'PAPER',
       performance: 'winning',
       tradeFrequency: 'low'
     },
     {
       name: 'Tech Stock Scalper',
-      assetType: 'stocks',
-      exchange: 'alpaca',
-      tradingMode: 'live',
+      assetType: 'STOCKS',
+      exchange: 'ALPACA',
+      tradingMode: 'LIVE',
       performance: 'mixed',
       tradeFrequency: 'high'
     },
     {
       name: 'Crypto DCA Strategy',
-      assetType: 'crypto',
-      exchange: 'coinbase_pro',
-      tradingMode: 'paper',
+      assetType: 'CRYPTO',
+      exchange: 'COINBASE_PRO',
+      tradingMode: 'PAPER',
       performance: 'winning',
       tradeFrequency: 'low'
     }
@@ -90,7 +90,7 @@ export class MockDataGenerator {
   };
 
   constructor() {
-    this.prisma = new PrismaClient();
+    // Use shared prisma instance
   }
 
   /**
@@ -147,7 +147,7 @@ export class MockDataGenerator {
             maxDailyLoss: 500,
             maxOpenPositions: template.tradeFrequency === 'high' ? 10 : 3
           },
-          status: Math.random() > 0.3 ? 'active' : 'paused',
+          status: Math.random() > 0.3 ? 'ACTIVE' : 'PAUSED',
           metadata: {
             isDemo: true,
             performance: template.performance,
@@ -170,7 +170,7 @@ export class MockDataGenerator {
    */
   private async generateTradeHistory(bot: any) {
     const { template } = bot;
-    const symbols = template.assetType === 'crypto' ? this.cryptoSymbols : this.stockSymbols;
+    const symbols = template.assetType === 'CRYPTO' ? this.cryptoSymbols : this.stockSymbols;
     
     // Determine number of trades based on frequency
     const tradeCount = {
@@ -199,13 +199,13 @@ export class MockDataGenerator {
       
       const trade: MockTradeData = {
         symbol,
-        side: Math.random() > 0.5 ? 'buy' : 'sell',
-        quantity: template.assetType === 'crypto' 
+        side: Math.random() > 0.5 ? 'BUY' : 'SELL',
+        quantity: template.assetType === 'CRYPTO' 
           ? parseFloat((Math.random() * 0.5).toFixed(8))
           : Math.floor(Math.random() * 100) + 1,
         price,
         executedPrice: price * slippage,
-        status: Math.random() > 0.95 ? 'failed' : 'completed',
+        status: Math.random() > 0.95 ? 'FAILED' : 'COMPLETED',
         timestamp
       };
 
@@ -231,7 +231,7 @@ export class MockDataGenerator {
           exchangeOrderId: crypto.randomBytes(16).toString('hex'),
           fees: trade.quantity * trade.executedPrice * 0.001, // 0.1% fees
           createdAt: trade.timestamp,
-          executedAt: trade.status === 'completed' 
+          executedAt: trade.status === 'COMPLETED' 
             ? new Date(trade.timestamp.getTime() + Math.random() * 5000)
             : undefined
         }
@@ -261,7 +261,7 @@ export class MockDataGenerator {
             orderId: crypto.randomBytes(8).toString('hex'),
             timestamp: trade.createdAt.toISOString()
           },
-          status: trade.status === 'completed' ? 'completed' : 'failed',
+          status: trade.status === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
           processedAt: trade.executedAt,
           createdAt: trade.createdAt
         }
@@ -423,7 +423,7 @@ export class MockDataGenerator {
       where: {
         userId,
         metadata: {
-          path: '$.isDemo',
+          path: ['isDemo'],
           equals: true
         }
       }

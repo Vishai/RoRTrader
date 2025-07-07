@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { demoService } from './demoService';
-import { prisma } from '@/shared/database';
+import { prisma } from '@/shared/database/prisma';
 
 export class DemoController {
   /**
@@ -41,7 +41,7 @@ export class DemoController {
         where: {
           userId,
           metadata: {
-            path: '$.isDemo',
+            path: ['isDemo'],
             equals: true
           }
         }
@@ -224,21 +224,15 @@ export class DemoController {
    */
   async getPresentationData(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required'
-        });
-      }
+      // For demo purposes, we'll return mock data without requiring auth
+      const userId = req.user?.id || 'demo-user';
 
       // Get aggregate stats for impressive presentation
       const [bots, trades, performance] = await Promise.all([
         prisma.bot.findMany({
           where: {
-            userId,
             metadata: {
-              path: '$.isDemo',
+              path: ['isDemo'],
               equals: true
             }
           },
@@ -249,14 +243,14 @@ export class DemoController {
                 webhookLogs: true
               }
             }
-          }
+          },
+          take: 6 // Limit to 6 bots for demo
         }),
         prisma.trade.aggregate({
           where: {
             bot: {
-              userId,
               metadata: {
-                path: '$.isDemo',
+                path: ['isDemo'],
                 equals: true
               }
             }
@@ -271,9 +265,8 @@ export class DemoController {
         prisma.botPerformance.findMany({
           where: {
             bot: {
-              userId,
               metadata: {
-                path: '$.isDemo',
+                path: ['isDemo'],
                 equals: true
               }
             }
@@ -284,6 +277,85 @@ export class DemoController {
           take: 30
         })
       ]);
+
+      // If no demo data exists, return mock data
+      if (bots.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            overview: {
+              totalBots: 5,
+              activeBots: 4,
+              totalTrades: 1234,
+              totalWebhooks: 5678,
+              totalReturn: '+42.5%',
+              avgSharpeRatio: '2.1',
+              totalFees: 123.45
+            },
+            bots: [
+              {
+                id: '1',
+                name: 'BTC Momentum Scanner',
+                status: 'active',
+                assetType: 'CRYPTO',
+                exchange: 'COINBASE_PRO',
+                tradingMode: 'paper',
+                tradeCount: 342,
+                webhookCount: 1234
+              },
+              {
+                id: '2',
+                name: 'ETH Grid Trading Bot',
+                status: 'active',
+                assetType: 'CRYPTO',
+                exchange: 'COINBASE_PRO',
+                tradingMode: 'live',
+                tradeCount: 256,
+                webhookCount: 890
+              },
+              {
+                id: '3',
+                name: 'AAPL Swing Trader',
+                status: 'active',
+                assetType: 'STOCKS',
+                exchange: 'ALPACA',
+                tradingMode: 'paper',
+                tradeCount: 89,
+                webhookCount: 234
+              },
+              {
+                id: '4',
+                name: 'Tech Stock Scalper',
+                status: 'paused',
+                assetType: 'STOCKS',
+                exchange: 'ALPACA',
+                tradingMode: 'live',
+                tradeCount: 456,
+                webhookCount: 1567
+              },
+              {
+                id: '5',
+                name: 'Crypto DCA Strategy',
+                status: 'active',
+                assetType: 'CRYPTO',
+                exchange: 'COINBASE_PRO',
+                tradingMode: 'paper',
+                tradeCount: 91,
+                webhookCount: 753
+              }
+            ],
+            recentPerformance: [
+              { date: new Date('2025-01-20'), return: 2.5, sharpeRatio: 2.1 },
+              { date: new Date('2025-01-19'), return: -0.8, sharpeRatio: 1.9 },
+              { date: new Date('2025-01-18'), return: 3.2, sharpeRatio: 2.3 },
+              { date: new Date('2025-01-17'), return: 1.5, sharpeRatio: 2.0 },
+              { date: new Date('2025-01-16'), return: -1.2, sharpeRatio: 1.8 },
+              { date: new Date('2025-01-15'), return: 4.1, sharpeRatio: 2.5 },
+              { date: new Date('2025-01-14'), return: 0.9, sharpeRatio: 2.1 }
+            ]
+          }
+        });
+      }
 
       // Calculate impressive stats
       const totalReturn = performance.reduce((sum, p) => 

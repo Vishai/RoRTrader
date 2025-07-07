@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/shared/database/prisma';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
 export class WebhookSimulator {
-  private prisma: PrismaClient;
+  private prisma = prisma;
   private baseUrl: string;
 
   // Trading patterns for realistic simulation
@@ -38,7 +38,7 @@ export class WebhookSimulator {
   ];
 
   constructor() {
-    this.prisma = new PrismaClient();
+    // Use shared prisma instance
     this.baseUrl = process.env.API_URL || 'http://localhost:3000';
   }
 
@@ -51,9 +51,9 @@ export class WebhookSimulator {
       const activeBots = await this.prisma.bot.findMany({
         where: {
           userId,
-          status: 'active',
+          status: 'ACTIVE',
           metadata: {
-            path: '$.isDemo',
+            path: ['isDemo'],
             equals: true
           }
         }
@@ -86,7 +86,7 @@ export class WebhookSimulator {
       case 'rally':
         // Simulate a series of buy signals
         for (let i = 0; i < 5; i++) {
-          await this.sendWebhook(bot, null, 'buy');
+          await this.sendWebhook(bot, null, 'BUY');
           await this.delay(2000);
         }
         break;
@@ -94,7 +94,7 @@ export class WebhookSimulator {
       case 'dump':
         // Simulate a series of sell signals
         for (let i = 0; i < 5; i++) {
-          await this.sendWebhook(bot, null, 'sell');
+          await this.sendWebhook(bot, null, 'SELL');
           await this.delay(2000);
         }
         break;
@@ -102,7 +102,7 @@ export class WebhookSimulator {
       case 'chop':
         // Simulate alternating buy/sell signals
         for (let i = 0; i < 6; i++) {
-          await this.sendWebhook(bot, null, i % 2 === 0 ? 'buy' : 'sell');
+          await this.sendWebhook(bot, null, i % 2 === 0 ? 'BUY' : 'SELL');
           await this.delay(3000);
         }
         break;
@@ -115,16 +115,16 @@ export class WebhookSimulator {
   private async sendWebhook(
     bot: any, 
     pattern: any = null,
-    forcedAction: 'buy' | 'sell' | null = null
+    forcedAction: 'BUY' | 'SELL' | null = null
   ) {
-    const symbols = bot.assetType === 'crypto' 
+    const symbols = bot.assetType === 'CRYPTO' 
       ? ['BTC-USD', 'ETH-USD', 'SOL-USD']
       : ['AAPL', 'GOOGL', 'MSFT', 'TSLA'];
 
     const symbol = pattern?.symbols?.[Math.floor(Math.random() * pattern.symbols.length)] 
       || symbols[Math.floor(Math.random() * symbols.length)];
 
-    const action = forcedAction || (Math.random() > 0.5 ? 'buy' : 'sell');
+    const action = forcedAction || (Math.random() > 0.5 ? 'BUY' : 'SELL');
     const marketEvent = this.marketEvents[Math.floor(Math.random() * this.marketEvents.length)];
 
     const webhookPayload = {
@@ -143,7 +143,7 @@ export class WebhookSimulator {
         data: {
           botId: bot.id,
           payload: webhookPayload,
-          status: 'received',
+          status: 'RECEIVED',
           metadata: {
             simulated: true,
             pattern: pattern?.description,
@@ -167,7 +167,7 @@ export class WebhookSimulator {
             }
           },
           data: {
-            status: 'completed',
+            status: 'COMPLETED',
             processedAt: new Date()
           }
         });
@@ -245,7 +245,7 @@ export class WebhookSimulator {
     if (!bot) return;
 
     const webhookPayload = {
-      action: 'buy',
+      action: 'BUY',
       symbol: 'INVALID-SYMBOL',
       quantity: -1, // Invalid quantity
       price: 0,
@@ -258,7 +258,7 @@ export class WebhookSimulator {
       data: {
         botId: bot.id,
         payload: webhookPayload,
-        status: 'failed',
+        status: 'FAILED',
         errorMessage: 'Invalid symbol or quantity',
         metadata: {
           simulated: true,

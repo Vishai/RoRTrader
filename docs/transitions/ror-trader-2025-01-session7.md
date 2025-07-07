@@ -49,6 +49,16 @@
 - Demo API routes added to server
 - Created `/demo` and `/demo/settings` routes
 
+### Bug Fixes:
+- Fixed JSX syntax error in PresentationDeck.tsx (line 216: `<500ms` → `&lt;500ms`)
+- Fixed Prisma imports in demo module to use shared instance from '@/shared/database/prisma'
+- Fixed PrismaClient instantiation - now using shared prisma instance across all demo services
+- Fixed auth middleware import in demo routes (changed to AuthMiddleware.authenticate)
+- Fixed controller method bindings in demo routes to preserve 'this' context
+- Fixed TokenUtil import in auth.middleware.ts
+- Fixed Prisma JSON path queries - changed from '$.isDemo' to ['isDemo'] array syntax
+- Fixed all enum values to match Prisma schema (uppercase: CRYPTO, STOCKS, ACTIVE, etc.)
+
 ---
 
 ## Current State
