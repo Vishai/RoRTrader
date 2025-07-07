@@ -74,6 +74,7 @@ model Bot {
   webhookLogs     WebhookLog[]
   trades          Trade[]
   performance     BotPerformance[]
+  strategy        BotStrategy?
   
   @@index([userId])
   @@index([webhookSecret])
@@ -228,4 +229,182 @@ enum TradeStatus {
   PARTIALLY_FILLED
   CANCELLED
   FAILED
+}
+
+// Strategy-related models
+
+// Bot trading strategy configuration
+model BotStrategy {
+  id                String              @id @default(uuid())
+  botId             String              @unique
+  name              String
+  description       String?
+  templateId        String?             // Reference to template if used
+  isActive          Boolean             @default(true)
+  version           Int                 @default(1)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  bot               Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
+  template          StrategyTemplate?   @relation(fields: [templateId], references: [id])
+  indicators        StrategyIndicator[]
+  entryConditions   StrategyCondition[] @relation("EntryConditions")
+  exitConditions    StrategyCondition[] @relation("ExitConditions")
+  backtests         StrategyBacktest[]
+  
+  @@index([botId])
+  @@index([templateId])
+}
+
+// Indicators used in a strategy
+model StrategyIndicator {
+  id                String          @id @default(uuid())
+  strategyId        String
+  indicatorType     IndicatorType
+  params            Json            // {period: 20, stdDev: 2, etc}
+  color             String?         // For UI display
+  displayOrder      Int             @default(0)
+  createdAt         DateTime        @default(now())
+  
+  // Relations
+  strategy          BotStrategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  conditions        StrategyCondition[]
+  
+  @@index([strategyId])
+}
+
+// Strategy conditions (entry/exit rules)
+model StrategyCondition {
+  id                String              @id @default(uuid())
+  strategyId        String
+  type              ConditionType       // ENTRY or EXIT
+  indicatorId       String?
+  operator          ConditionOperator
+  compareToType     CompareToType       // VALUE, INDICATOR, PRICE
+  compareToValue    Json                // {value: 30} or {indicatorId: "uuid", offset: 0}
+  logicalOperator   LogicalOperator?    // AND/OR for combining with next condition
+  orderIndex        Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  
+  // Relations
+  strategy          BotStrategy         @relation("EntryConditions", fields: [strategyId], references: [id], onDelete: Cascade)
+  exitStrategy      BotStrategy?        @relation("ExitConditions", fields: [strategyId], references: [id], onDelete: Cascade)
+  indicator         StrategyIndicator?  @relation(fields: [indicatorId], references: [id])
+  
+  @@index([strategyId, type])
+}
+
+// Strategy backtest results
+model StrategyBacktest {
+  id                String          @id @default(uuid())
+  strategyId        String
+  startDate         DateTime
+  endDate           DateTime
+  initialCapital    Decimal         @db.Decimal(20, 8)
+  finalCapital      Decimal         @db.Decimal(20, 8)
+  totalTrades       Int
+  winningTrades     Int
+  losingTrades      Int
+  totalReturn       Decimal         @db.Decimal(10, 4)
+  sharpeRatio       Decimal?        @db.Decimal(8, 4)
+  sortinoRatio      Decimal?        @db.Decimal(8, 4)
+  maxDrawdown       Decimal         @db.Decimal(8, 4)
+  profitFactor      Decimal?        @db.Decimal(8, 4)
+  winRate           Decimal         @db.Decimal(5, 2)
+  avgWin            Decimal?        @db.Decimal(20, 8)
+  avgLoss           Decimal?        @db.Decimal(20, 8)
+  results           Json            // Detailed trade-by-trade results
+  settings          Json            // Backtest settings used
+  createdAt         DateTime        @default(now())
+  
+  // Relations
+  strategy          BotStrategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  
+  @@index([strategyId, createdAt])
+}
+
+// Pre-built strategy templates
+model StrategyTemplate {
+  id                String          @id @default(uuid())
+  name              String          @unique
+  displayName       String
+  description       String
+  category          TemplateCategory
+  difficulty        Difficulty
+  timeframe         String          // "5m", "1h", "1d", etc
+  assetTypes        AssetType[]     // Which asset types this works for
+  configuration     Json            // Complete strategy configuration
+  performance       Json?           // Historical performance metrics
+  isPublic          Boolean         @default(true)
+  author            String          @default("RoR Trader")
+  usageCount        Int             @default(0)
+  rating            Decimal?        @db.Decimal(3, 2) // Average user rating
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  strategies        BotStrategy[]
+  
+  @@index([category])
+  @@index([difficulty])
+}
+
+// Additional Enums for strategies
+enum IndicatorType {
+  SMA
+  EMA
+  RSI
+  MACD
+  BOLLINGER
+  STOCHASTIC
+  ATR
+  VOLUME
+  VWAP
+  PIVOT_POINTS
+  FIBONACCI
+  CUSTOM
+}
+
+enum ConditionType {
+  ENTRY
+  EXIT
+}
+
+enum ConditionOperator {
+  CROSSES_ABOVE
+  CROSSES_BELOW
+  GREATER_THAN
+  LESS_THAN
+  EQUALS
+  BETWEEN
+}
+
+enum CompareToType {
+  VALUE
+  INDICATOR
+  PRICE
+}
+
+enum LogicalOperator {
+  AND
+  OR
+}
+
+enum TemplateCategory {
+  TREND_FOLLOWING
+  MEAN_REVERSION
+  MOMENTUM
+  VOLATILITY
+  VOLUME
+  SCALPING
+  SWING
+  POSITION
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
 }
