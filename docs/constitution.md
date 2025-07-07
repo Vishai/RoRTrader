@@ -153,8 +153,10 @@ FOR EACH TASK:
    - Security tests for sensitive operations
    - Performance benchmarks
 6. Show results/created files
-7. Update task list artifact:
+7. Update task list file at /docs/task-list.md:
    - Mark current task [x]
+   - Update progress counts
+   - Preserve all existing checkmarks (IMMUTABLE)
    - Update security checklist if applicable
 8. Display metrics: "Tests: X passed | Coverage: X% | Security: ✓"
 9. Ask: "Task X.X complete. May I proceed to task X.X?"

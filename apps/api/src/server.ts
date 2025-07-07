@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { authRoutes } from './modules/auth';
+import { demoRoutes } from './modules/demo';
 import { prisma } from './shared/database/prisma';
 
 // Load environment variables
@@ -62,6 +63,7 @@ app.get('/api', (req, res) => {
       health: '/health',
       api: '/api',
       auth: '/api/auth/*',
+      demo: '/api/demo/*',
       bots: '/api/bots/*',
       webhooks: '/webhook/:botId/:secret',
     },
@@ -70,6 +72,7 @@ app.get('/api', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/demo', demoRoutes);
 
 // 404 handler
 app.use((req, res) => {
