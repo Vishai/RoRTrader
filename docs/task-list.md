@@ -20,18 +20,18 @@ Following the UI-First Development approach outlined in the PRD for maximum visi
 - [x] Set up Storybook for component showcase
 
 ### 1.2 Static Dashboard UI
-- [ ] Create main dashboard layout
-- [ ] Build portfolio overview cards (with mock data)
-- [ ] Design active bots list component
-- [ ] Implement recent activity feed
-- [ ] Add real-time chart placeholders
+- [x] Create main dashboard layout
+- [x] Build portfolio overview cards (with mock data)
+- [x] Design active bots list component
+- [x] Implement recent activity feed
+- [x] Add real-time chart placeholders
 
 ### 1.3 Bot Management Screens
-- [ ] Design bot creation wizard UI
-- [ ] Create bot detail page layout
-- [ ] Build bot configuration forms
-- [ ] Design webhook URL display component
-- [ ] Implement bot status indicators
+- [x] Design bot creation wizard UI
+- [x] Create bot detail page layout
+- [x] Build bot configuration forms
+- [x] Design webhook URL display component
+- [x] Implement bot status indicators
 
 ### 1.4 Authentication UI
 - [ ] Create login/register pages
@@ -377,8 +377,8 @@ Following the UI-First Development approach outlined in the PRD for maximum visi
 ## Overall Progress Summary
 
 ### Week 1-2 Tasks Status:
-- **Task 1.1**: Project Setup & Component Library - 🟩 80% Complete
-- **Task 1.2**: Static Dashboard UI - ⬜ 0% Complete
+- **Task 1.1**: Project Setup & Component Library - ✅ 100% Complete
+- **Task 1.2**: Static Dashboard UI - ✅ 100% Complete  
 - **Task 1.3**: Bot Management Screens - ⬜ 0% Complete
 - **Task 1.4**: Authentication UI - ⬜ 0% Complete
 - **Task 1.5**: Basic Backend Foundation - 🟩 80% Complete

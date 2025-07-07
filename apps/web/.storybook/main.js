@@ -2,19 +2,15 @@ const path = require('path');
 
 module.exports = {
   stories: ['../components/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
-  addons: [
-    '@storybook/addon-links',
-    '@storybook/addon-essentials',
-    '@storybook/addon-interactions',
-  ],
+  addons: ['@storybook/addon-links', '@storybook/addon-docs'],
+
   framework: {
     name: '@storybook/nextjs',
     options: {},
   },
-  docs: {
-    autodocs: true,
-  },
+
   staticDirs: ['../public'],
+
   webpackFinal: async (config) => {
     // Add path alias support
     config.resolve.alias = {
@@ -25,5 +21,5 @@ module.exports = {
       '@/app': path.resolve(__dirname, '../app'),
     };
     return config;
-  },
+  }
 };

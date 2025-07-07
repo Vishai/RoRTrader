@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Preview } from '@storybook/react';
+import type { Preview } from '@storybook/nextjs';
 import '../app/globals.css';
 
 const preview: Preview = {
@@ -25,6 +25,7 @@ const preview: Preview = {
       ],
     },
   },
+
   globalTypes: {
     theme: {
       name: 'Theme',
@@ -37,6 +38,7 @@ const preview: Preview = {
       },
     },
   },
+
   decorators: [
     (Story) => (
       <div className="min-h-screen bg-background-primary">
@@ -44,6 +46,8 @@ const preview: Preview = {
       </div>
     ),
   ],
+
+  tags: ['autodocs']
 };
 
 export default preview;

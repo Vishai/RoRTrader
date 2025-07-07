@@ -38,13 +38,34 @@
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### UI Demo (Fastest Way to See RoR Trader)
+
+Want to see the trading dashboard immediately? Run just the UI:
+
+```bash
+# Clone and enter the project
+git clone https://github.com/yourusername/RoRTrader.git
+cd RoRTrader
+
+# Install dependencies
+npm install
+
+# Run the web UI only
+cd apps/web
+npm run dev
+```
+
+Visit http://localhost:3000 and click "View Demo Dashboard" to see the trading interface with mock data.
+
+### Full Stack Development
+
+#### Prerequisites
 
 - Node.js 18+ and npm 9+
 - Docker and Docker Compose
 - Git
 
-### Development Setup
+#### Development Setup
 
 1. **Clone the repository**
    ```bash
