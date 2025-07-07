@@ -6,6 +6,8 @@ import { rateLimit } from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { authRoutes } from './modules/auth';
+import { prisma } from './shared/database/prisma';
 
 // Load environment variables
 dotenv.config();
@@ -66,6 +68,9 @@ app.get('/api', (req, res) => {
   });
 });
 
+// API Routes
+app.use('/api/auth', authRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -112,10 +117,12 @@ httpServer.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
-  httpServer.close(() => {
+  httpServer.close(async () => {
     console.log('HTTP server closed');
+    await prisma.$disconnect();
+    console.log('Database connection closed');
     process.exit(0);
   });
 });

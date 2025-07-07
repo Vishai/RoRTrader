@@ -72,8 +72,10 @@ Performance Targets: <2s webhook-to-order execution
 ### Law 3: Documentation as Living Truth
 
 - **Task lists are sacred** - Must be updated in real-time
+- **Completed tasks are immutable** - [x] marks can never be unchecked
 - **Every file operation is logged** in the Relevant Files section
 - **Progress is visible** through [x] checkmarks
+- **Transition naming follows strict pattern** - ror-trader-2025-01-sessionN.md
 - **Security decisions documented** for SOC2 compliance
 
 ### Law 4: Testing Discipline
@@ -360,6 +362,57 @@ Current approach: [describe implementation]
 This follows our zero-knowledge architecture pattern."
 ```
 
+### Task List Update Protocol
+
+```
+"Updating task list with progress..."
+RULES FOR TASK LIST UPDATES:
+1. NEVER uncheck completed tasks - [x] marks are IMMUTABLE
+2. Only ADD new [x] marks for newly completed tasks
+3. Preserve all existing checkmarks exactly as they are
+4. Update progress counts accurately
+5. Maintain task numbering consistency
+6. If modifying task descriptions, preserve completion status
+
+ERROR PREVENTION:
+- Before updating, count existing [x] marks
+- After updating, verify count increased or stayed same
+- If count decreased, STOP and restore previous state
+```
+
+### Transition Document Naming Convention
+
+```
+"Creating transition document..."
+NAMING PATTERN: ror-trader-2025-01-sessionN.md
+
+RULES:
+1. ALWAYS use lowercase 'ror-trader'
+2. ALWAYS use '2025-01' regardless of actual date (project-based, not calendar-based)
+3. 'session' is always singular, lowercase
+4. Session number increments sequentially from last session
+5. No 'final' suffix - just increment numbers
+6. Sessions are work-based, not time-based
+
+EXAMPLES:
+✓ ror-trader-2025-01-session1.md
+✓ ror-trader-2025-01-session2.md
+✓ ror-trader-2025-01-session3.md
+✓ ror-trader-2025-01-session6.md (continues from session5)
+✗ ror-trader-2025-01-session1-final.md (no suffixes)
+✗ RoR-Trader-2025-01-session1.md (wrong case)
+✗ ror-trader-2025-07-session1.md (don't use actual month)
+
+SESSION NUMBER DETERMINATION:
+1. List existing files in /docs/transitions/
+2. Find highest session number
+3. New session = highest + 1
+4. Continue sequential numbering indefinitely
+
+NOTE: We use '2025-01' as a fixed project identifier, not the actual date.
+This allows rapid session-based development without calendar constraints.
+```
+
 ### When Handling Webhook Failures
 
 ```
@@ -446,10 +499,11 @@ When user says "transition", "transition please", "please transition", or contex
 - [Security items to remember]
 - [Performance considerations]
 
-✅ Transition document saved: /Users/brandonarmstrong/Documents/Github/RoRTrader/docs/transitions/ror-trader-[timestamp].md
+✅ Transition document saved using naming convention:
+/Users/brandonarmstrong/Documents/Github/RoRTrader/docs/transitions/ror-trader-2025-01-sessionN.md
 
 To continue in new conversation, start with:
-'Continue RoR Trader development from transition document [timestamp]'
+'Continue RoR Trader development from transition document ror-trader-2025-01-sessionN'
 "
 ```
 
@@ -816,6 +870,7 @@ Even across context boundaries, these rules ALWAYS persist:
 5. **Performance Standards** - <2s execution always
 6. **Context Continuity** - Preserve project state across sessions
 7. **Correct Path Usage** - Always create files at /Users/brandonarmstrong/Documents/Github/RoRTrader
+8. **Documentation Integrity** - Completed tasks remain checked forever, transition docs follow ror-trader-2025-01-sessionN.md pattern
 
 ---
 
@@ -889,7 +944,7 @@ Before EVERY deployment:
 
 ---
 
-_RoR Trader Constitution Version: 3.0 (Master)_  
+_RoR Trader Constitution Version: 3.2 (Master)_  
 _Last Updated: January 2025_  
 _Project Location: /Users/brandonarmstrong/Documents/Github/RoRTrader_  
 _Status: MVP Development Active_

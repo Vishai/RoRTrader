@@ -1,0 +1,228 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with authentication and subscription info
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  passwordHash         String
+  totpSecret           String?   // Encrypted
+  totpEnabled          Boolean   @default(false)
+  backupCodes          Json?     // Encrypted backup codes
+  subscriptionTier     Tier      @default(FREE)
+  subscriptionExpiresAt DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  bots                 Bot[]
+  exchangeCredentials  ExchangeCredential[]
+  sessions            Session[]
+  auditLogs           AuditLog[]
+  
+  @@index([email])
+}
+
+// Active user sessions
+model Session {
+  id          String   @id @default(uuid())
+  userId      String
+  token       String   @unique
+  device      String
+  browser     String
+  ipAddress   String
+  location    String?
+  lastActive  DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// Trading bots
+model Bot {
+  id              String      @id @default(uuid())
+  userId          String
+  name            String
+  description     String?
+  assetType       AssetType
+  exchange        Exchange
+  tradingMode     TradingMode @default(PAPER)
+  webhookSecret   String      @unique
+  positionSizing  Json        // {type: 'fixed' | 'percentage', value: number}
+  riskManagement  Json?       // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
+  status          BotStatus   @default(STOPPED)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookLogs     WebhookLog[]
+  trades          Trade[]
+  performance     BotPerformance[]
+  
+  @@index([userId])
+  @@index([webhookSecret])
+}
+
+// Exchange API credentials (encrypted)
+model ExchangeCredential {
+  id                String    @id @default(uuid())
+  userId            String
+  exchange          Exchange
+  encryptedApiKey   String    // Encrypted with KMS
+  encryptedApiSecret String   // Encrypted with KMS
+  keyPermissions    Json?     // {canTrade: boolean, canRead: boolean, etc}
+  lastUsedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, exchange])
+}
+
+// Webhook logs for tracking all incoming signals
+model WebhookLog {
+  id          String         @id @default(uuid())
+  botId       String
+  payload     Json           // Complete webhook payload
+  status      WebhookStatus  @default(RECEIVED)
+  errorMessage String?
+  processedAt DateTime?
+  createdAt   DateTime       @default(now())
+  
+  // Relations
+  bot         Bot            @relation(fields: [botId], references: [id], onDelete: Cascade)
+  trades      Trade[]
+  
+  @@index([botId, createdAt])
+}
+
+// Trade executions
+model Trade {
+  id              String      @id @default(uuid())
+  botId           String
+  webhookLogId    String?
+  exchange        Exchange
+  symbol          String
+  side            OrderSide
+  orderType       String      // market, limit, stop, etc
+  quantity        Decimal     @db.Decimal(20, 8)
+  price           Decimal?    @db.Decimal(20, 8)
+  executedPrice   Decimal?    @db.Decimal(20, 8)
+  status          TradeStatus
+  exchangeOrderId String?
+  fees            Decimal?    @db.Decimal(20, 8)
+  errorMessage    String?
+  createdAt       DateTime    @default(now())
+  executedAt      DateTime?
+  
+  // Relations
+  bot             Bot         @relation(fields: [botId], references: [id], onDelete: Cascade)
+  webhookLog      WebhookLog? @relation(fields: [webhookLogId], references: [id])
+  
+  @@index([botId, createdAt])
+}
+
+// Bot performance metrics
+model BotPerformance {
+  id              String   @id @default(uuid())
+  botId           String
+  date            DateTime @db.Date
+  totalTrades     Int      @default(0)
+  winningTrades   Int      @default(0)
+  totalReturn     Decimal? @db.Decimal(10, 4)
+  sharpeRatio     Decimal? @db.Decimal(8, 4)
+  sortinoRatio    Decimal? @db.Decimal(8, 4)
+  maxDrawdown     Decimal? @db.Decimal(8, 4)
+  profitFactor    Decimal? @db.Decimal(8, 4)
+  metricsSnapshot Json?    // Additional metrics as JSON
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  bot             Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  
+  @@unique([botId, date])
+}
+
+// Audit logs for compliance and security
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // login, logout, bot_created, trade_executed, etc
+  resourceType String? // user, bot, trade, etc
+  resourceId  String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?    // Additional context
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+// Enums
+enum Tier {
+  FREE
+  BASIC
+  PRO
+  ELITE
+}
+
+enum AssetType {
+  CRYPTO
+  STOCKS
+}
+
+enum Exchange {
+  COINBASE_PRO
+  ALPACA
+}
+
+enum TradingMode {
+  PAPER
+  LIVE
+}
+
+enum BotStatus {
+  ACTIVE
+  PAUSED
+  STOPPED
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  FAILED
+}

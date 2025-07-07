@@ -5,8 +5,8 @@
   "description": "RoR Trader API Backend",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon",
-    "build": "tsc",
+    "dev": "nodemon -r tsconfig-paths/register",
+    "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",
@@ -63,9 +63,17 @@
     "@types/supertest": "^2.0.0",
     "eslint": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0"
+    "@typescript-eslint/parser": "^7.0.0",
+    "tsconfig-paths": "^4.2.0",
+    "tsc-alias": "^1.8.0",
+    "module-alias": "^2.2.0"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "_moduleAliases": {
+    "@": "dist",
+    "@/modules": "dist/modules",
+    "@/shared": "dist/shared"
   }
 }
