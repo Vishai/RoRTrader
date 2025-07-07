@@ -2,14 +2,19 @@ import React from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';
+import { TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
 
 export interface IndicatorCardProps {
   name: string;
-  value?: number | string;
+  value?: number | string | Record<string, number>;
   signal?: 'buy' | 'sell' | 'neutral' | 'strong-buy' | 'strong-sell';
+  strength?: number;
+  message?: string;
+  trend?: 'up' | 'down' | 'neutral';
   change?: number;
   settings?: Record<string, any>;
   isActive?: boolean;
+  isLive?: boolean;
   onClick?: () => void;
   className?: string;
 }
@@ -30,16 +35,55 @@ const signalLabels = {
   'neutral': 'Neutral',
 };
 
+const trendIcons = {
+  'up': TrendingUp,
+  'down': TrendingDown,
+  'neutral': Minus,
+};
+
 export const IndicatorCard: React.FC<IndicatorCardProps> = ({
   name,
   value,
   signal,
+  strength,
+  message,
+  trend,
   change,
   settings,
   isActive = true,
+  isLive = false,
   onClick,
   className,
 }) => {
+  // Format value display
+  const formatValue = (val: typeof value): string => {
+    if (val === undefined || val === null) return 'N/A';
+    
+    if (typeof val === 'number') {
+      return val.toFixed(2);
+    } else if (typeof val === 'string') {
+      return val;
+    } else if (typeof val === 'object') {
+      // Handle multi-value indicators like Bollinger Bands
+      return Object.entries(val)
+        .map(([k, v]) => `${k}: ${v.toFixed(2)}`)
+        .join(' | ');
+    }
+    return String(val);
+  };
+
+  // Get signal label with strength
+  const getSignalLabel = () => {
+    if (!signal) return null;
+    const label = signalLabels[signal];
+    if (strength !== undefined) {
+      return `${label} (${Math.round(strength * 100)}%)`;
+    }
+    return label;
+  };
+
+  const TrendIcon = trend ? trendIcons[trend] : Activity;
+
   return (
     <Card
       className={cn(
@@ -54,10 +98,18 @@ export const IndicatorCard: React.FC<IndicatorCardProps> = ({
       <div className="p-4 space-y-3">
         {/* Header */}
         <div className="flex items-start justify-between">
-          <div>
-            <h4 className="text-lg font-semibold text-text-primary">{name}</h4>
-            {settings && (
-              <div className="mt-1 text-sm text-text-tertiary">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="text-lg font-semibold text-text-primary">{name}</h4>
+              {isLive && (
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-accent-secondary rounded-full animate-pulse" />
+                  <span className="text-xs text-accent-secondary">LIVE</span>
+                </div>
+              )}
+            </div>
+            {settings && Object.keys(settings).length > 0 && (
+              <div className="mt-1 text-xs text-text-tertiary">
                 {Object.entries(settings).map(([key, val]) => (
                   <span key={key} className="mr-3">
                     {key}: <span className="text-text-secondary">{val}</span>
@@ -67,27 +119,48 @@ export const IndicatorCard: React.FC<IndicatorCardProps> = ({
             )}
           </div>
           {signal && (
-            <Badge className={cn('px-2 py-1', signalColors[signal])}>
-              {signalLabels[signal]}
+            <Badge className={cn('px-2 py-1 text-xs', signalColors[signal])}>
+              {getSignalLabel()}
             </Badge>
           )}
         </div>
 
         {/* Value Display */}
         {value !== undefined && (
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-text-primary">
-              {typeof value === 'number' ? value.toFixed(2) : value}
-            </span>
-            {change !== undefined && (
-              <span
-                className={cn(
-                  'text-sm font-medium',
-                  change > 0 ? 'text-accent-secondary' : 'text-accent-danger'
-                )}
-              >
-                {change > 0 ? '+' : ''}{change.toFixed(2)}%
+          <div className="space-y-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-text-primary">
+                {formatValue(value)}
               </span>
+              {trend && (
+                <TrendIcon 
+                  className={cn(
+                    'w-5 h-5',
+                    trend === 'up' && 'text-accent-secondary',
+                    trend === 'down' && 'text-accent-danger',
+                    trend === 'neutral' && 'text-text-tertiary'
+                  )}
+                />
+              )}
+            </div>
+            
+            {change !== undefined && (
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'text-sm font-medium',
+                    change > 0 ? 'text-accent-secondary' : 'text-accent-danger'
+                  )}
+                >
+                  {change > 0 ? '+' : ''}{change.toFixed(2)}%
+                </span>
+              </div>
+            )}
+            
+            {message && (
+              <p className="text-xs text-text-secondary line-clamp-2">
+                {message}
+              </p>
             )}
           </div>
         )}

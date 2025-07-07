@@ -89,15 +89,27 @@ Following the UI-First Development approach with integrated advanced technical a
 - [x] **ENHANCED: Connect strategy builder to API** ✅ (API ready)
 - [ ] **ENHANCED: Wire up indicator selection to backend**
 
-### 2.2 Technical Analysis Engine (NEW SECTION)
-- [x] **NEW: Implement core indicators (EMA, SMA, RSI, MACD, Bollinger Bands)** ✅
-- [x] **NEW: Create indicator caching layer with Redis** ✅
-- [x] **NEW: Build real-time calculation pipeline** ✅
-- [ ] **NEW: Set up indicator WebSocket channels** (placeholder created)
-- [ ] **NEW: Create indicator accuracy tracking**
-
-### 2.3 Strategy Builder Core (NEW SECTION)
-- [ ] **NEW: Implement drag-and-drop canvas functionality**
+### 2.4 Frontend-Backend Integration (NEW - Session 12)
+- [x] **Create API service layer** ✅
+  - [x] analysis.service.ts - Technical indicator calculations
+  - [x] strategy.service.ts - Strategy management
+  - [x] market-data.service.ts - Market data and candles
+  - [x] websocket.service.ts - Real-time updates
+- [x] **Create React hooks for data fetching** ✅
+  - [x] useIndicators - Indicator calculations and status
+  - [x] useStrategy - Strategy CRUD operations
+  - [x] useMarketData - Candles and live prices
+- [x] **Update components to use real API** ✅
+  - [x] TradingViewChart - Connected to market data
+  - [x] IndicatorStatusCards - Live indicator data
+  - [x] StrategyBuilderCanvas - Save functionality
+  - [x] IndicatorPalette - API-driven indicators
+  - [x] StrategyTemplateSelector - Dynamic templates
+- [ ] **Backend endpoint implementation** ❌
+  - [ ] /api/analysis/* endpoints
+  - [ ] /api/strategies/* endpoints  
+  - [ ] /api/market/* endpoints
+  - [ ] WebSocket server configuration
 - [ ] **NEW: Create visual condition builder logic**
 - [ ] **NEW: Build strategy validation system**
 - [ ] **NEW: Implement strategy serialization/deserialization**

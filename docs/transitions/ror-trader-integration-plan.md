@@ -31,26 +31,26 @@
 ## Integration Tasks Remaining
 
 ### 1. Frontend API Service Layer
-- [ ] Create `/apps/web/services/analysis.service.ts` for indicator calculations
-- [ ] Create `/apps/web/services/strategy.service.ts` for strategy CRUD
-- [ ] Create `/apps/web/services/market-data.service.ts` for candle data
-- [ ] Add proper error handling and loading states
+- [x] Create `/apps/web/services/analysis.service.ts` for indicator calculations
+- [x] Create `/apps/web/services/strategy.service.ts` for strategy CRUD
+- [x] Create `/apps/web/services/market-data.service.ts` for candle data
+- [x] Add proper error handling and loading states
 
 ### 2. TradingViewChart Integration
-- [ ] Replace mock candle data with real market data API
-- [ ] Connect indicator calculations to backend
+- [x] Replace mock candle data with real market data API
+- [x] Connect indicator calculations to backend
 - [ ] Implement real-time price updates via WebSocket
-- [ ] Add indicator parameter validation
+- [x] Add indicator parameter validation
 
 ### 3. Strategy Builder Integration
-- [ ] Connect StrategyBuilderCanvas save functionality to API
+- [x] Connect StrategyBuilderCanvas save functionality to API
 - [ ] Load strategy templates from backend
-- [ ] Implement strategy validation before saving
+- [x] Implement strategy validation before saving
 - [ ] Add real-time strategy evaluation preview
 
 ### 4. Performance Widgets Integration
 - [ ] Connect StrategyPerformanceWidget to real metrics
-- [ ] Update IndicatorStatusCards with live calculations
+- [x] Update IndicatorStatusCards with live calculations
 - [ ] Implement real-time signal updates
 - [ ] Add historical performance data
 
