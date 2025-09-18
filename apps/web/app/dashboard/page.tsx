@@ -61,6 +61,9 @@ export default function DashboardPage() {
               <a href="/bots" className="text-text-secondary hover:text-text-primary transition-colors">
                 Bots
               </a>
+              <a href="/coach" className="text-text-secondary hover:text-text-primary transition-colors">
+                Coach
+              </a>
               <a href="/analytics" className="text-text-secondary hover:text-text-primary transition-colors">
                 Analytics
               </a>

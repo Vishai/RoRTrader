@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @ror-trader/web & npm run dev -w @ror-trader/api",
+    "dev": "node scripts/dev/start-dev.js",
     "dev:web": "npm run dev -w @ror-trader/web",
     "dev:api": "npm run dev -w @ror-trader/api",
     "build": "npm run build --workspaces",
