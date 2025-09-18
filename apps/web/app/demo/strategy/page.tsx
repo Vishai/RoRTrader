@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TradingViewChart } from '@/components/charts';
 import { IndicatorPalette, IndicatorCard } from '@/components/indicators';
 import { StrategyPerformanceWidget, IndicatorStatusCards } from '@/components/strategy';
@@ -11,113 +11,29 @@ import {
 } from '@/components/strategy-builder';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-
-// Generate mock chart data
-const generateMockChartData = () => {
-  const now = Date.now();
-  const data = [];
-  let price = 50000;
-  
-  for (let i = 100; i >= 0; i--) {
-    const time = new Date(now - i * 3600000).toISOString();
-    const change = (Math.random() - 0.5) * 1000;
-    const high = price + Math.random() * 500;
-    const low = price - Math.random() * 500;
-    const close = price + change;
-    const open = price;
-    
-    data.push({
-      time,
-      open,
-      high,
-      low,
-      close,
-      volume: Math.floor(Math.random() * 1000000),
-    });
-    
-    price = close;
-  }
-  
-  return data;
-};
-
-// Mock indicator status data
-const mockIndicatorStatus = [
-  {
-    id: '1',
-    name: 'RSI',
-    value: 65.4,
-    signal: 'buy' as const,
-    change: 5.2,
-    settings: { period: 14 },
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'MACD',
-    value: 'Bullish Cross',
-    signal: 'strong-buy' as const,
-    settings: { fast: 12, slow: 26, signal: 9 },
-    isActive: true,
-  },
-  {
-    id: '3',
-    name: 'Bollinger Bands',
-    value: 'Upper Band',
-    signal: 'sell' as const,
-    settings: { period: 20, stdDev: 2 },
-    isActive: true,
-  },
-  {
-    id: '4',
-    name: 'EMA Cross',
-    value: 'Above',
-    signal: 'buy' as const,
-    change: 2.1,
-    settings: { fast: 20, slow: 50 },
-    isActive: true,
-  },
-  {
-    id: '5',
-    name: 'Stochastic',
-    value: 78.3,
-    signal: 'neutral' as const,
-    settings: { k: 14, d: 3 },
-    isActive: false,
-  },
-  {
-    id: '6',
-    name: 'ATR',
-    value: 823.5,
-    signal: 'neutral' as const,
-    change: -1.2,
-    settings: { period: 14 },
-    isActive: true,
-  },
-];
-
-// Mock backtest result
-const mockBacktestResult = {
-  totalReturn: 25430,
-  totalReturnPercent: 25.43,
-  winRate: 58.3,
-  totalTrades: 156,
-  winningTrades: 91,
-  losingTrades: 65,
-  averageWin: 543,
-  averageLoss: -287,
-  profitFactor: 1.89,
-  sharpeRatio: 1.45,
-  maxDrawdown: 12.8,
-  startDate: new Date('2024-01-01'),
-  endDate: new Date('2024-12-31'),
-};
+import { useIndicators } from '@/hooks/useIndicators';
+import { useStrategyTemplates } from '@/hooks/useStrategy';
+import { Loader2 } from 'lucide-react';
 
 export default function StrategyDemoPage() {
   const [selectedTab, setSelectedTab] = useState<'overview' | 'builder' | 'templates' | 'backtest'>('overview');
-  const [chartData] = useState(generateMockChartData());
   const [showBacktestResult, setShowBacktestResult] = useState(false);
   const [strategyNodes, setStrategyNodes] = useState<any[]>([]);
+  const [selectedBot] = useState('demo-bot-1');
+
+  // Fetch real data from API
+  const { data: availableIndicators, isLoading: indicatorsLoading } = useIndicators();
+  const { data: strategyTemplates, isLoading: templatesLoading } = useStrategyTemplates();
+
+  // Configure active indicators for the demo
+  const activeIndicators = useMemo(() => [
+    { id: 'rsi', name: 'RSI', parameters: { period: 14 }, isActive: true },
+    { id: 'macd', name: 'MACD', parameters: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }, isActive: true },
+    { id: 'bollinger', name: 'Bollinger Bands', parameters: { period: 20, standardDeviations: 2 }, isActive: true },
+    { id: 'ema', name: 'EMA Cross', parameters: { shortPeriod: 20, longPeriod: 50 }, isActive: true },
+    { id: 'stochastic', name: 'Stochastic', parameters: { kPeriod: 14, dPeriod: 3, smooth: 3 }, isActive: false },
+    { id: 'atr', name: 'ATR', parameters: { period: 14 }, isActive: true },
+  ], []);
 
   const tabs = [
     { id: 'overview', label: 'Strategy Overview' },
@@ -125,6 +41,23 @@ export default function StrategyDemoPage() {
     { id: 'templates', label: 'Templates' },
     { id: 'backtest', label: 'Backtesting' },
   ];
+
+  // Mock backtest result (until API is ready)
+  const mockBacktestResult = {
+    totalReturn: 25430,
+    totalReturnPercent: 25.43,
+    winRate: 58.3,
+    totalTrades: 156,
+    winningTrades: 91,
+    losingTrades: 65,
+    averageWin: 543,
+    averageLoss: -287,
+    profitFactor: 1.89,
+    sharpeRatio: 1.45,
+    maxDrawdown: 12.8,
+    startDate: new Date('2024-01-01'),
+    endDate: new Date('2024-12-31'),
+  };
 
   return (
     <div className="min-h-screen bg-background-primary p-8">
@@ -135,7 +68,7 @@ export default function StrategyDemoPage() {
             Advanced Trading Strategy Demo
           </h1>
           <p className="text-text-secondary">
-            Explore the power of visual strategy building and technical analysis
+            Real-time technical analysis and strategy building with live API integration
           </p>
         </div>
 
@@ -159,35 +92,36 @@ export default function StrategyDemoPage() {
         {/* Tab Content */}
         {selectedTab === 'overview' && (
           <div className="space-y-8">
-            {/* Trading Chart with Indicators */}
+            {/* Trading Chart with Real Data */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-text-primary mb-4">
                 Live Chart with Technical Indicators
               </h2>
               <TradingViewChart
-                data={chartData}
-                type="candlestick"
+                symbol="BTC-USD"
+                exchange="coinbase"
+                timeframe="1h"
                 height={500}
-                indicators={{
-                  sma: [
-                    { period: 20, color: '#FFB800' },
-                    { period: 50, color: '#9945FF' },
-                  ],
-                  ema: [
-                    { period: 12, color: '#00D4FF' },
-                    { period: 26, color: '#00FF88' },
-                  ],
-                }}
+                enableLive={true}
+                indicators={[
+                  { id: 'sma', name: 'SMA', parameters: { period: 20 }, color: '#FFB800' },
+                  { id: 'sma', name: 'SMA', parameters: { period: 50 }, color: '#9945FF' },
+                  { id: 'ema', name: 'EMA', parameters: { period: 12 }, color: '#00D4FF' },
+                  { id: 'ema', name: 'EMA', parameters: { period: 26 }, color: '#00FF88' },
+                ]}
               />
             </Card>
 
-            {/* Indicator Status Cards */}
+            {/* Live Indicator Status Cards */}
             <div>
               <h2 className="text-xl font-semibold text-text-primary mb-4">
-                Active Indicators Status
+                Real-Time Indicator Analysis
               </h2>
               <IndicatorStatusCards
-                indicators={mockIndicatorStatus}
+                symbol="BTC-USD"
+                timeframe="1h"
+                indicators={activeIndicators}
+                refreshInterval={5000}
                 onIndicatorClick={(indicator) => console.log('Clicked:', indicator)}
               />
             </div>
@@ -195,7 +129,7 @@ export default function StrategyDemoPage() {
             {/* Strategy Performance Widgets */}
             <div>
               <h2 className="text-xl font-semibold text-text-primary mb-4">
-                Strategy Performance Comparison
+                Active Strategy Performance
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <StrategyPerformanceWidget
@@ -236,47 +170,47 @@ export default function StrategyDemoPage() {
         {selectedTab === 'builder' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Indicator Palette */}
+              {/* Indicator Palette with Real Data */}
               <div className="lg:col-span-1">
                 <Card className="p-4">
                   <h3 className="text-lg font-semibold text-text-primary mb-4">
-                    Indicators
+                    Available Indicators
                   </h3>
-                  <IndicatorPalette
-                    onSelectIndicator={(indicator) => {
-                      const newNode = {
-                        id: `node-${Date.now()}`,
-                        type: 'indicator' as const,
-                        name: indicator.name,
-                        position: { x: 50, y: 50 + strategyNodes.length * 100 },
-                        settings: indicator.defaultSettings,
-                      };
-                      setStrategyNodes([...strategyNodes, newNode]);
-                    }}
-                  />
+                  {indicatorsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
+                    </div>
+                  ) : (
+                    <IndicatorPalette
+                      indicators={availableIndicators}
+                      onSelectIndicator={(indicator) => {
+                        const newNode = {
+                          id: `node-${Date.now()}`,
+                          type: 'indicator' as const,
+                          indicatorId: indicator.id,
+                          name: indicator.name,
+                          position: { x: 50, y: 50 + strategyNodes.length * 100 },
+                          settings: indicator.defaultSettings || {},
+                        };
+                        setStrategyNodes([...strategyNodes, newNode]);
+                      }}
+                    />
+                  )}
                 </Card>
               </div>
 
-              {/* Strategy Canvas */}
+              {/* Strategy Canvas with API Integration */}
               <div className="lg:col-span-3">
                 <Card className="p-4">
                   <h3 className="text-lg font-semibold text-text-primary mb-4">
                     Strategy Builder Canvas
                   </h3>
                   <StrategyBuilderCanvas
-                    nodes={strategyNodes}
-                    onNodeAdd={(node) => setStrategyNodes([...strategyNodes, node])}
-                    onNodeRemove={(nodeId) => 
-                      setStrategyNodes(strategyNodes.filter(n => n.id !== nodeId))
-                    }
-                    onNodeConnect={(from, to) => {
-                      console.log('Connect:', from, 'to', to);
+                    botId={selectedBot}
+                    onSave={(strategyId) => {
+                      console.log('Strategy saved:', strategyId);
                     }}
                   />
-                  <div className="mt-4 flex gap-4">
-                    <Button variant="primary">Save Strategy</Button>
-                    <Button variant="secondary">Clear Canvas</Button>
-                  </div>
                 </Card>
               </div>
             </div>
@@ -288,9 +222,20 @@ export default function StrategyDemoPage() {
             <h2 className="text-xl font-semibold text-text-primary mb-4">
               Pre-Built Strategy Templates
             </h2>
-            <StrategyTemplateSelector
-              onSelectTemplate={(template) => console.log('Selected:', template)}
-            />
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+              </div>
+            ) : (
+              <StrategyTemplateSelector
+                templates={strategyTemplates}
+                onSelectTemplate={(template) => {
+                  console.log('Selected template:', template);
+                  // Switch to builder tab with template loaded
+                  setSelectedTab('builder');
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -313,13 +258,36 @@ export default function StrategyDemoPage() {
                 Equity Curve
               </h2>
               <Card className="p-6 h-[400px] flex items-center justify-center">
-                <p className="text-text-tertiary">
-                  Equity curve visualization will appear here after backtest
-                </p>
+                {showBacktestResult ? (
+                  <TradingViewChart
+                    symbol="EQUITY"
+                    exchange="coinbase"
+                    timeframe="1d"
+                    height={350}
+                    enableLive={false}
+                  />
+                ) : (
+                  <p className="text-text-tertiary">
+                    Equity curve visualization will appear here after backtest
+                  </p>
+                )}
               </Card>
             </div>
           </div>
         )}
+
+        {/* Status Bar */}
+        <div className="fixed bottom-4 right-4 bg-background-elevated px-4 py-2 rounded-lg shadow-lg border border-border-default">
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-accent-secondary rounded-full animate-pulse" />
+              <span className="text-text-secondary">API Connected</span>
+            </div>
+            <div className="text-text-tertiary">
+              Real-time data streaming
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

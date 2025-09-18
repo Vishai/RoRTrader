@@ -1,4 +1,3 @@
-import { Injectable } from '@/shared/decorators/injectable.decorator';
 import { RedisService } from '@/shared/services/redis.service';
 import { logger } from '@/shared/utils/logger';
 
@@ -27,7 +26,6 @@ export interface IndicatorResult {
   strength?: number; // 0-100
 }
 
-@Injectable()
 export class TechnicalAnalysisService {
   constructor(private readonly redis: RedisService) {}
 

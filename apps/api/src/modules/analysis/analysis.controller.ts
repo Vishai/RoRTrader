@@ -1,14 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { Injectable } from '@/shared/decorators/injectable.decorator';
-import { Controller } from '@/shared/decorators/controller.decorator';
-import { Get, Post } from '@/shared/decorators/http-methods.decorator';
 import { TechnicalAnalysisService } from './technical-analysis.service';
 import { validate } from '@/shared/middleware/validation.middleware';
 import { calculateIndicatorSchema, batchIndicatorSchema } from './analysis.validation';
 import { asyncHandler } from '@/shared/utils/async-handler';
 
-@Injectable()
-@Controller('/api/analysis')
 export class AnalysisController {
   constructor(private readonly analysisService: TechnicalAnalysisService) {}
 
@@ -16,7 +11,6 @@ export class AnalysisController {
    * Calculate a single indicator
    * POST /api/analysis/indicator
    */
-  @Post('/indicator')
   async calculateIndicator(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const { symbol, indicator, params, candles } = validate(calculateIndicatorSchema, req.body);
@@ -39,7 +33,6 @@ export class AnalysisController {
    * Calculate multiple indicators at once
    * POST /api/analysis/batch
    */
-  @Post('/batch')
   async calculateBatchIndicators(req: Request, res: Response, next: NextFunction) {
     return asyncHandler(async () => {
       const { symbol, indicators, candles } = validate(batchIndicatorSchema, req.body);
@@ -86,7 +79,6 @@ export class AnalysisController {
    * Get supported indicators and their parameters
    * GET /api/analysis/indicators
    */
-  @Get('/indicators')
   async getSupportedIndicators(req: Request, res: Response) {
     const indicators = [
       {
@@ -144,7 +136,6 @@ export class AnalysisController {
    * Real-time indicator streaming endpoint (for WebSocket)
    * This is a placeholder for WebSocket implementation
    */
-  @Get('/stream/:symbol')
   async streamIndicators(req: Request, res: Response) {
     res.json({
       success: true,

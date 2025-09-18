@@ -3,8 +3,9 @@
  */
 export function Controller(basePath: string = ''): ClassDecorator {
   return (target: any) => {
-    Reflect.defineMetadata('basePath', basePath, target);
-    Reflect.defineMetadata('isController', true, target);
+    // Store metadata as properties on the class
+    target._basePath = basePath;
+    target._isController = true;
     return target;
   };
 }

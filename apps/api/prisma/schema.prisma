@@ -56,32 +56,43 @@ model Session {
 
 // Trading bots
 model Bot {
-  id             String      @id @default(uuid())
-  userId         String
-  name           String
-  description    String?
-  assetType      AssetType
-  exchange       Exchange
-  tradingMode    TradingMode @default(PAPER)
-  webhookSecret  String      @unique
-  positionSizing Json // {type: 'fixed' | 'percentage', value: number}
-  riskManagement Json? // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
-  metadata       Json? // Additional metadata (e.g., isDemo, performance, tradeFrequency)
-  status         BotStatus   @default(STOPPED)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id              String      @id @default(uuid())
+  userId          String
+  name            String
+  description     String?
+
+  // Trading Configuration
+  symbol          String      // e.g., "BTC-USD", "AAPL"
+  assetType       AssetType
+  exchange        Exchange
+  timeframe       String      @default("1h") // e.g., "5m", "15m", "1h", "4h", "1d"
+
+  // Strategy & Indicators
+  signalMode      SignalMode  @default(ALL) // How to combine indicator signals
+
+  // Trading Settings
+  tradingMode     TradingMode @default(PAPER)
+  webhookSecret   String      @unique
+  positionSizing  Json        // {type: 'fixed' | 'percentage', value: number}
+  riskManagement  Json?       // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
+  metadata        Json?       // Additional metadata (e.g., isDemo, performance, tradeFrequency)
+  status          BotStatus   @default(STOPPED)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   // Relations
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  webhookLogs  WebhookLog[]
-  trades       Trade[]
-  performance  BotPerformance[]
-  strategy     BotStrategy?
-  CoachRuleSet CoachRuleSet[]
-  CoachSession CoachSession[]
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookLogs     WebhookLog[]
+  trades          Trade[]
+  performance     BotPerformance[]
+  strategy        BotStrategy?
+  indicators      BotIndicator[] // Bot-specific indicator configurations
+  CoachRuleSet    CoachRuleSet[]
+  CoachSession    CoachSession[]
 
   @@index([userId])
   @@index([webhookSecret])
+  @@index([symbol, exchange])
 }
 
 // Exchange API credentials (encrypted)
@@ -186,6 +197,27 @@ model AuditLog {
   @@index([action, createdAt])
 }
 
+// Bot-specific indicator configuration
+model BotIndicator {
+  id          String   @id @default(uuid())
+  botId       String
+  bot         Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  
+  indicator   String   // e.g., "rsi", "macd", "ema"
+  parameters  Json     // e.g., { period: 14, overbought: 70, oversold: 30 }
+  weight      Decimal  @default(1.0) @db.Decimal(3, 2) // Importance in decision making
+  enabled     Boolean  @default(true)
+  
+  // Signal thresholds
+  buySignal   Json?    // e.g., { operator: "lt", value: 30 } for RSI < 30
+  sellSignal  Json?    // e.g., { operator: "gt", value: 70 } for RSI > 70
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([botId])
+}
+
 // Enums
 enum Tier {
   FREE
@@ -213,6 +245,13 @@ enum BotStatus {
   ACTIVE
   PAUSED
   STOPPED
+}
+
+enum SignalMode {
+  ANY       // Any indicator signals = trade
+  ALL       // All indicators must agree
+  MAJORITY  // Majority of indicators must agree
+  CUSTOM    // Custom logic
 }
 
 enum WebhookStatus {
@@ -250,6 +289,7 @@ model BotStrategy {
   updatedAt   DateTime @updatedAt
 
   // Relations
+<<<<<<< HEAD
   bot             Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
   template        StrategyTemplate?   @relation(fields: [templateId], references: [id])
   indicators      StrategyIndicator[]
@@ -258,6 +298,14 @@ model BotStrategy {
   backtests       StrategyBacktest[]
   CoachRuleSet    CoachRuleSet[]
 
+=======
+  bot               Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
+  template          StrategyTemplate?   @relation(fields: [templateId], references: [id])
+  indicators        StrategyIndicator[]
+  conditions        StrategyCondition[]
+  backtests         StrategyBacktest[]
+  
+>>>>>>> coaching
   @@index([botId])
   @@index([templateId])
 }
@@ -294,10 +342,16 @@ model StrategyCondition {
   createdAt       DateTime          @default(now())
 
   // Relations
+<<<<<<< HEAD
   strategy     BotStrategy        @relation("EntryConditions", fields: [strategyId], references: [id], onDelete: Cascade)
   exitStrategy BotStrategy?       @relation("ExitConditions", fields: [exitStrategyId], references: [id], onDelete: Cascade)
   indicator    StrategyIndicator? @relation(fields: [indicatorId], references: [id])
 
+=======
+  strategy          BotStrategy         @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  indicator         StrategyIndicator?  @relation(fields: [indicatorId], references: [id])
+  
+>>>>>>> coaching
   @@index([strategyId, type])
   @@index([exitStrategyId])
 }

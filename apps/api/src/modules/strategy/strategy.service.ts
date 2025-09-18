@@ -1,4 +1,3 @@
-import { Injectable } from '@/shared/decorators/injectable.decorator';
 import { prisma } from '@/shared/database/prisma';
 import { logger } from '@/shared/utils/logger';
 import { Prisma } from '@prisma/client';
@@ -38,7 +37,6 @@ export interface UpdateStrategyDto {
   exitConditions?: CreateStrategyDto['exitConditions'];
 }
 
-@Injectable()
 export class StrategyService {
   /**
    * Create a new strategy for a bot
@@ -127,7 +125,13 @@ export class StrategyService {
       }
       
       // Return complete strategy
-      return this.getStrategyById(strategy.id);
+      // Return complete strategy with conditions separated
+      const fullStrategy = await this.getStrategyById(strategy.id);
+      return {
+        ...fullStrategy,
+        entryConditions: fullStrategy.conditions.filter(c => c.type === 'ENTRY'),
+        exitConditions: fullStrategy.conditions.filter(c => c.type === 'EXIT')
+      };
       
     } catch (error) {
       logger.error('Error creating strategy:', error);
@@ -139,7 +143,7 @@ export class StrategyService {
    * Get strategy by ID
    */
   async getStrategyById(strategyId: string) {
-    return prisma.botStrategy.findUnique({
+    const strategy = await prisma.botStrategy.findUnique({
       where: { id: strategyId },
       include: {
         bot: true,
@@ -147,13 +151,7 @@ export class StrategyService {
         indicators: {
           orderBy: { displayOrder: 'asc' }
         },
-        entryConditions: {
-          where: { type: 'ENTRY' },
-          orderBy: { orderIndex: 'asc' },
-          include: { indicator: true }
-        },
-        exitConditions: {
-          where: { type: 'EXIT' },
+        conditions: {
           orderBy: { orderIndex: 'asc' },
           include: { indicator: true }
         },
@@ -163,6 +161,15 @@ export class StrategyService {
         }
       }
     });
+    
+    if (!strategy) return null;
+    
+    // Transform to include separated conditions
+    return {
+      ...strategy,
+      entryConditions: strategy.conditions.filter(c => c.type === 'ENTRY'),
+      exitConditions: strategy.conditions.filter(c => c.type === 'EXIT')
+    };
   }
 
   /**
@@ -177,19 +184,13 @@ export class StrategyService {
       throw new Error('Bot not found or unauthorized');
     }
     
-    return prisma.botStrategy.findUnique({
+    const strategy = await prisma.botStrategy.findUnique({
       where: { botId },
       include: {
         indicators: {
           orderBy: { displayOrder: 'asc' }
         },
-        entryConditions: {
-          where: { type: 'ENTRY' },
-          orderBy: { orderIndex: 'asc' },
-          include: { indicator: true }
-        },
-        exitConditions: {
-          where: { type: 'EXIT' },
+        conditions: {
           orderBy: { orderIndex: 'asc' },
           include: { indicator: true }
         },
@@ -199,6 +200,15 @@ export class StrategyService {
         }
       }
     });
+    
+    if (!strategy) return null;
+    
+    // Transform to include separated conditions
+    return {
+      ...strategy,
+      entryConditions: strategy.conditions.filter(c => c.type === 'ENTRY'),
+      exitConditions: strategy.conditions.filter(c => c.type === 'EXIT')
+    };
   }
 
   /**

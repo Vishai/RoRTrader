@@ -10,8 +10,11 @@ import { Server } from 'socket.io';
 import { authRoutes } from './modules/auth';
 import { demoRoutes } from './modules/demo';
 import { analysisRoutes } from './modules/analysis';
+import { marketRoutes, MarketGateway } from './modules/market';
 import { strategyRoutes } from './modules/strategy';
 import { coachRoutes } from './modules/coach';
+import { botRoutes } from './modules/bots';
+import { webhookRoutes } from './modules/webhooks';
 import { prisma } from './shared/database/prisma';
 
 // Load environment variables
@@ -28,6 +31,10 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+
+// Initialize market WebSocket gateway (raw ws)
+const marketGateway = new MarketGateway(httpServer);
+marketGateway.initialize();
 
 // Middleware
 app.use(helmet());
@@ -81,8 +88,11 @@ app.get('/api', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/market', marketRoutes);
 app.use('/api/strategies', strategyRoutes);
 app.use('/api/coach', coachRoutes);
+app.use('/api/bots', botRoutes);
+app.use('', webhookRoutes); // Webhook routes include both /webhook and /api paths
 
 // 404 handler
 app.use((req, res) => {

@@ -86,25 +86,59 @@ Following the UI-First Development approach with integrated advanced technical a
 - [ ] Wire up bot creation forms
 - [ ] Add form validation
 - [ ] Implement error handling UI
-- [ ] **ENHANCED: Connect strategy builder to API**
+- [x] **ENHANCED: Connect strategy builder to API** ✅ (API ready)
 - [ ] **ENHANCED: Wire up indicator selection to backend**
 
-### 2.2 Technical Analysis Engine (NEW SECTION)
-- [x] **NEW: Implement core indicators (EMA, SMA, RSI, MACD, Bollinger Bands)** ✅
-- [x] **NEW: Create indicator caching layer with Redis** ✅
-- [x] **NEW: Build real-time calculation pipeline** ✅
-- [ ] **NEW: Set up indicator WebSocket channels** (placeholder created)
-- [ ] **NEW: Create indicator accuracy tracking**
-
-### 2.3 Strategy Builder Core (NEW SECTION)
-- [ ] **NEW: Implement drag-and-drop canvas functionality**
+### 2.4 Frontend-Backend Integration (NEW - Session 12)
+- [x] **Create API service layer** ✅
+  - [x] analysis.service.ts - Technical indicator calculations
+  - [x] strategy.service.ts - Strategy management
+  - [x] market-data.service.ts - Market data and candles
+  - [x] websocket.service.ts - Real-time updates
+- [x] **Create React hooks for data fetching** ✅
+  - [x] useIndicators - Indicator calculations and status
+  - [x] useStrategy - Strategy CRUD operations
+  - [x] useMarketData - Candles and live prices
+- [x] **Update components to use real API** ✅
+  - [x] TradingViewChart - Connected to market data
+  - [x] IndicatorStatusCards - Live indicator data
+  - [x] StrategyBuilderCanvas - Save functionality
+  - [x] IndicatorPalette - API-driven indicators
+  - [x] StrategyTemplateSelector - Dynamic templates
+- [ ] **Backend endpoint implementation** ❌
+  - [ ] /api/analysis/* endpoints
+  - [ ] /api/strategies/* endpoints  
+  - [x] /api/market/* endpoints
+  - [ ] WebSocket server configuration
 - [ ] **NEW: Create visual condition builder logic**
 - [ ] **NEW: Build strategy validation system**
 - [ ] **NEW: Implement strategy serialization/deserialization**
 - [ ] **NEW: Create strategy execution engine**
 
-### 2.4 Real-time Features
-- [ ] Set up WebSocket connection
+### 2.4 Frontend-Backend Integration (CRITICAL - NOT DONE)
+- [ ] **Create API service layer in frontend**
+  - [ ] `/apps/web/services/analysis.service.ts`
+  - [ ] `/apps/web/services/strategy.service.ts`
+  - [ ] `/apps/web/services/market-data.service.ts`
+- [ ] **Connect TradingViewChart to real data**
+  - [ ] Replace mock candles with API calls
+  - [ ] Wire indicator calculations to backend
+  - [ ] Add loading and error states
+- [ ] **Connect Strategy Builder to API**
+  - [ ] Implement save strategy functionality
+  - [ ] Load templates from backend
+  - [ ] Add strategy validation
+- [ ] **Update Performance Widgets**
+  - [ ] Connect to real indicator calculations
+  - [ ] Show live trading signals
+  - [ ] Display actual performance metrics
+- [ ] **Integrate with Bot Creation**
+  - [ ] Add strategy selection step
+  - [ ] Connect to strategy API
+  - [ ] Update bot model to include strategy
+
+### 2.5 Real-time Features
+- [x] Set up WebSocket connection
 - [ ] Implement live price updates
 - [ ] Add real-time trade notifications
 - [ ] Create activity stream updates
@@ -113,7 +147,7 @@ Following the UI-First Development approach with integrated advanced technical a
 - [ ] **ENHANCED: Create live strategy evaluation status**
 - [ ] **ENHANCED: Build chart with live indicator overlays**
 
-### 2.5 Enhanced Webhook Integration
+### 2.6 Enhanced Webhook Integration
 - [ ] Create webhook testing interface
 - [ ] Build webhook log viewer
 - [ ] Design webhook debugger
@@ -123,24 +157,24 @@ Following the UI-First Development approach with integrated advanced technical a
 - [ ] **ENHANCED: Add strategy context to webhook processing**
 - [ ] **ENHANCED: Create conditional webhook routing based on indicators**
 
-### 2.6 Core Backend APIs
+### 2.7 Core Backend APIs
 - [ ] Complete bot CRUD operations
 - [ ] Implement webhook receiver
 - [ ] Set up Redis queue system
 - [ ] Add Bull MQ job processing
 - [ ] Create basic security middleware
-- [ ] **ENHANCED: Add strategy CRUD endpoints**
-- [ ] **ENHANCED: Create indicator calculation endpoints**
+- [x] **ENHANCED: Add strategy CRUD endpoints** ✅
+- [x] **ENHANCED: Create indicator calculation endpoints** ✅
 - [ ] **ENHANCED: Build backtest API endpoints**
 
-### 2.7 2FA Implementation
+### 2.8 2FA Implementation
 - [ ] Integrate TOTP backend
 - [ ] Complete 2FA UI flow
 - [ ] Generate QR codes
 - [ ] Test complete auth flow
 - [ ] Add backup codes
 
-### 2.8 Performance Monitoring UI
+### 2.9 Performance Monitoring UI
 - [ ] Create latency display
 - [ ] Build webhook processing stats
 - [ ] Add system health dashboard

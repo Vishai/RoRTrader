@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { cn } from '../../lib/utils';
 import { 
   TrendingUp, 
@@ -8,143 +8,127 @@ import {
   Waves,
   Target,
   Zap,
-  Gauge
+  Gauge,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+import { IndicatorDefinition } from '@/services/analysis.service';
 
-export interface Indicator {
-  id: string;
-  name: string;
-  category: 'trend' | 'momentum' | 'volatility' | 'volume' | 'support-resistance';
-  icon: React.ReactNode;
-  description: string;
-  defaultSettings: Record<string, any>;
-}
-
-const indicatorIcons = {
+// Map indicator categories to icons
+const categoryIcons: Record<string, React.ReactNode> = {
   trend: <TrendingUp className="w-5 h-5" />,
   momentum: <Activity className="w-5 h-5" />,
   volatility: <Waves className="w-5 h-5" />,
   volume: <BarChart3 className="w-5 h-5" />,
   'support-resistance': <Target className="w-5 h-5" />,
+  oscillator: <Gauge className="w-5 h-5" />,
+  other: <LineChart className="w-5 h-5" />,
 };
 
-export const indicators: Indicator[] = [
-  // Trend Indicators
-  {
-    id: 'sma',
-    name: 'Simple Moving Average',
-    category: 'trend',
-    icon: <LineChart className="w-5 h-5" />,
-    description: 'Average price over a specific period',
-    defaultSettings: { period: 20 },
-  },
-  {
-    id: 'ema',
-    name: 'Exponential Moving Average',
-    category: 'trend',
-    icon: <LineChart className="w-5 h-5" />,
-    description: 'Weighted average giving more importance to recent prices',
-    defaultSettings: { period: 20 },
-  },
-  {
-    id: 'macd',
-    name: 'MACD',
-    category: 'trend',
-    icon: <TrendingUp className="w-5 h-5" />,
-    description: 'Moving Average Convergence Divergence',
-    defaultSettings: { fast: 12, slow: 26, signal: 9 },
-  },
-  
-  // Momentum Indicators
-  {
-    id: 'rsi',
-    name: 'Relative Strength Index',
-    category: 'momentum',
-    icon: <Gauge className="w-5 h-5" />,
-    description: 'Measures overbought and oversold conditions',
-    defaultSettings: { period: 14, overbought: 70, oversold: 30 },
-  },
-  {
-    id: 'stochastic',
-    name: 'Stochastic Oscillator',
-    category: 'momentum',
-    icon: <Activity className="w-5 h-5" />,
-    description: 'Compares closing price to price range',
-    defaultSettings: { kPeriod: 14, dPeriod: 3, smooth: 3 },
-  },
-  
-  // Volatility Indicators
-  {
-    id: 'bollinger',
-    name: 'Bollinger Bands',
-    category: 'volatility',
-    icon: <Waves className="w-5 h-5" />,
-    description: 'Volatility bands above and below a moving average',
-    defaultSettings: { period: 20, stdDev: 2 },
-  },
-  {
-    id: 'atr',
-    name: 'Average True Range',
-    category: 'volatility',
-    icon: <Zap className="w-5 h-5" />,
-    description: 'Measures market volatility',
-    defaultSettings: { period: 14 },
-  },
-  
-  // Volume Indicators
-  {
-    id: 'obv',
-    name: 'On-Balance Volume',
-    category: 'volume',
-    icon: <BarChart3 className="w-5 h-5" />,
-    description: 'Uses volume flow to predict price changes',
-    defaultSettings: {},
-  },
-  {
-    id: 'vwap',
-    name: 'VWAP',
-    category: 'volume',
-    icon: <BarChart3 className="w-5 h-5" />,
-    description: 'Volume Weighted Average Price',
-    defaultSettings: {},
-  },
-  
-  // Support & Resistance
-  {
-    id: 'pivot',
-    name: 'Pivot Points',
-    category: 'support-resistance',
-    icon: <Target className="w-5 h-5" />,
-    description: 'Potential support and resistance levels',
-    defaultSettings: { type: 'standard' },
-  },
-  {
-    id: 'fibonacci',
-    name: 'Fibonacci Retracement',
-    category: 'support-resistance',
-    icon: <Target className="w-5 h-5" />,
-    description: 'Key levels based on Fibonacci ratios',
-    defaultSettings: { levels: [0.236, 0.382, 0.5, 0.618, 0.786] },
-  },
-];
+// Map specific indicators to icons (optional override)
+const indicatorIcons: Record<string, React.ReactNode> = {
+  sma: <LineChart className="w-5 h-5" />,
+  ema: <LineChart className="w-5 h-5" />,
+  macd: <TrendingUp className="w-5 h-5" />,
+  rsi: <Gauge className="w-5 h-5" />,
+  bollinger: <Waves className="w-5 h-5" />,
+  atr: <Zap className="w-5 h-5" />,
+  obv: <BarChart3 className="w-5 h-5" />,
+  vwap: <BarChart3 className="w-5 h-5" />,
+  pivot: <Target className="w-5 h-5" />,
+};
 
 interface IndicatorPaletteProps {
-  onSelectIndicator?: (indicator: Indicator) => void;
+  indicators?: IndicatorDefinition[];
+  isLoading?: boolean;
+  error?: Error | null;
+  onSelectIndicator?: (indicator: IndicatorDefinition) => void;
   selectedCategory?: string;
   className?: string;
 }
 
 export const IndicatorPalette: React.FC<IndicatorPaletteProps> = ({
+  indicators = [],
+  isLoading = false,
+  error = null,
   onSelectIndicator,
   selectedCategory = 'all',
   className,
 }) => {
-  const categories = ['all', 'trend', 'momentum', 'volatility', 'volume', 'support-resistance'];
-  const [activeCategory, setActiveCategory] = React.useState(selectedCategory);
+  const [activeCategory, setActiveCategory] = useState(selectedCategory);
   
-  const filteredIndicators = activeCategory === 'all' 
-    ? indicators 
-    : indicators.filter(ind => ind.category === activeCategory);
+  // Extract unique categories from indicators
+  const categories = useMemo(() => {
+    const categorySet = new Set(['all']);
+    indicators.forEach(ind => {
+      if (ind.category) {
+        categorySet.add(ind.category);
+      }
+    });
+    return Array.from(categorySet);
+  }, [indicators]);
+  
+  // Filter indicators by category
+  const filteredIndicators = useMemo(() => {
+    if (activeCategory === 'all') {
+      return indicators;
+    }
+    return indicators.filter(ind => ind.category === activeCategory);
+  }, [indicators, activeCategory]);
+
+  // Get icon for indicator
+  const getIndicatorIcon = (indicator: IndicatorDefinition) => {
+    // Check specific indicator icons first
+    if (indicatorIcons[indicator.id]) {
+      return indicatorIcons[indicator.id];
+    }
+    // Fall back to category icon
+    if (indicator.category && categoryIcons[indicator.category]) {
+      return categoryIcons[indicator.category];
+    }
+    // Default icon
+    return categoryIcons.other;
+  };
+
+  // Format category name for display
+  const formatCategoryName = (category: string): string => {
+    if (category === 'all') return 'All';
+    return category
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center justify-center py-8', className)}>
+        <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className={cn('p-4', className)}>
+        <div className="flex items-center gap-2 text-accent-danger mb-2">
+          <AlertCircle className="w-5 h-5" />
+          <span className="font-medium">Failed to load indicators</span>
+        </div>
+        <p className="text-text-tertiary text-sm">{error.message}</p>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (indicators.length === 0) {
+    return (
+      <div className={cn('text-center py-8', className)}>
+        <p className="text-text-tertiary">No indicators available</p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -161,7 +145,7 @@ export const IndicatorPalette: React.FC<IndicatorPaletteProps> = ({
                 : 'bg-background-elevated text-text-secondary hover:text-text-primary hover:bg-background-elevated/80'
             )}
           >
-            {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+            {formatCategoryName(category)}
           </button>
         ))}
       </div>
@@ -181,7 +165,7 @@ export const IndicatorPalette: React.FC<IndicatorPaletteProps> = ({
           >
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-background-tertiary text-text-secondary group-hover:text-accent-primary transition-colors">
-                {indicator.icon}
+                {getIndicatorIcon(indicator)}
               </div>
               <div className="flex-1">
                 <h4 className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
@@ -190,11 +174,24 @@ export const IndicatorPalette: React.FC<IndicatorPaletteProps> = ({
                 <p className="text-sm text-text-tertiary mt-0.5">
                   {indicator.description}
                 </p>
+                {/* Show parameter count */}
+                {indicator.parameters && indicator.parameters.length > 0 && (
+                  <p className="text-xs text-text-tertiary mt-1">
+                    {indicator.parameters.length} parameter{indicator.parameters.length > 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Empty category state */}
+      {filteredIndicators.length === 0 && (
+        <div className="text-center py-4 text-text-tertiary">
+          <p>No indicators in this category</p>
+        </div>
+      )}
     </div>
   );
 };
