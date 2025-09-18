@@ -44,6 +44,11 @@ describe('Market Routes', () => {
     expect(response.body.data.symbol).toBe('BTC-USD');
     expect(response.body.data.candles).toHaveLength(50);
     expect(response.body.data.metadata.count).toBe(50);
+    expect(response.body.data.metadata).toMatchObject({
+      dataSource: 'demo',
+      cached: false,
+      fallback: false
+    });
   });
 
   it('validates required query parameters', async () => {

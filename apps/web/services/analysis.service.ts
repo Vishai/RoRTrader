@@ -26,10 +26,25 @@ export interface IndicatorCalculationRequest {
   symbol: string;
   timeframe: string;
   parameters?: Record<string, any>;
+  exchange?: string;
   bars?: number;
 }
 
-export interface IndicatorCalculationResponse {
+export type AnalysisDataSource = 'alpaca' | 'coinbase_pro' | 'demo' | 'provided';
+
+export interface AnalysisMeta {
+  dataSource: AnalysisDataSource;
+  cached: boolean;
+  fallback: boolean;
+}
+
+export interface AnalysisApiResponse<T> {
+  success: boolean;
+  data: T;
+  meta: AnalysisMeta;
+}
+
+export interface IndicatorCalculationData {
   indicator: string;
   symbol: string;
   timeframe: string;
@@ -51,6 +66,8 @@ export interface IndicatorCalculationResponse {
   };
 }
 
+export type IndicatorCalculationResponse = AnalysisApiResponse<IndicatorCalculationData>;
+
 export interface BatchIndicatorRequest {
   indicators: Array<{
     indicator: string;
@@ -58,6 +75,7 @@ export interface BatchIndicatorRequest {
   }>;
   symbol: string;
   timeframe: string;
+  exchange?: string;
   bars?: number;
 }
 
@@ -73,10 +91,14 @@ export interface IndicatorSummary {
   parameters: Record<string, any>;
 }
 
-export interface BatchIndicatorResponse {
+export interface BatchIndicatorData {
   symbol: string;
   timeframe: string;
   timestamp: string;
+  currentPrice: number;
+  priceChange: number;
+  priceChangePercent: number;
+  volume: number;
   indicators: IndicatorSummary[];
   overallSignal: {
     type: 'buy' | 'sell' | 'neutral';
@@ -84,8 +106,11 @@ export interface BatchIndicatorResponse {
     bullishCount: number;
     bearishCount: number;
     neutralCount: number;
+    warnings?: string[];
   };
 }
+
+export type BatchIndicatorResponse = AnalysisApiResponse<BatchIndicatorData>;
 
 // Analysis Service Class
 export class AnalysisService {
@@ -98,22 +123,14 @@ export class AnalysisService {
   static async calculateIndicator(
     request: IndicatorCalculationRequest
   ): Promise<IndicatorCalculationResponse> {
-    return apiCall<IndicatorCalculationResponse>(
-      'post',
-      '/api/analysis/indicator',
-      request
-    );
+    return apiCall<IndicatorCalculationResponse>('post', '/api/analysis/indicator', request);
   }
 
   // Calculate multiple indicators at once
   static async calculateBatch(
     request: BatchIndicatorRequest
   ): Promise<BatchIndicatorResponse> {
-    return apiCall<BatchIndicatorResponse>(
-      'post',
-      '/api/analysis/batch',
-      request
-    );
+    return apiCall<BatchIndicatorResponse>('post', '/api/analysis/batch', request);
   }
 
   // Get indicator by ID
@@ -171,7 +188,7 @@ export class AnalysisService {
 
   // Convert indicator response to chart series format
   static toChartSeries(
-    response: IndicatorCalculationResponse,
+    response: IndicatorCalculationData,
     seriesName?: string
   ): any[] {
     return response.values.map(item => {

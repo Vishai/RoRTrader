@@ -59,7 +59,7 @@ export class MarketController {
       const exchange = this.normalizeExchange(query.exchange);
       const timeframe = this.normalizeTimeframe(query.timeframe);
 
-      const candles = await this.marketDataService.getCandles({
+      const { candles, source, cached, fallback } = await this.marketDataService.getCandles({
         symbol: query.symbol,
         exchange,
         timeframe,
@@ -90,7 +90,10 @@ export class MarketController {
           metadata: {
             firstTimestamp: firstCandle ? new Date(firstCandle.time).toISOString() : null,
             lastTimestamp: lastCandle ? new Date(lastCandle.time).toISOString() : null,
-            count: responseCandles.length
+            count: responseCandles.length,
+            dataSource: source,
+            cached,
+            fallback
           }
         }
       });

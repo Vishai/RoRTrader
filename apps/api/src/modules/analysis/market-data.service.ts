@@ -2,14 +2,33 @@ import { RedisService } from '@/shared/services/redis.service';
 import { logger } from '@/shared/utils/logger';
 import { CandleData } from './technical-analysis.service';
 import axios from 'axios';
+import { Counter, register } from 'prom-client';
+
+const getOrCreateCounter = (name: string, help: string, labelNames: string[]): Counter<string> => {
+  const existing = register.getSingleMetric(name) as Counter<string> | undefined;
+  return existing ?? new Counter({ name, help, labelNames });
+};
+
+const candleCacheHitCounter = getOrCreateCounter('market_candle_cache_hits_total', 'Number of candle cache hits', ['requested_exchange', 'timeframe']);
+const candleCacheMissCounter = getOrCreateCounter('market_candle_cache_misses_total', 'Number of candle cache misses', ['requested_exchange', 'timeframe']);
+const candleFallbackCounter = getOrCreateCounter('market_candle_fallback_total', 'Number of times market data fell back to demo candles', ['requested_exchange', 'timeframe', 'actual_source']);
+
 
 export interface MarketDataOptions {
   symbol: string;
   exchange: 'coinbase_pro' | 'alpaca' | 'demo';
-  timeframe: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
+  timeframe: '1m' | '2m' | '3m' | '5m' | '10m' | '15m' | '30m' | '45m' | '1h' | '2h' | '3h' | '4h' | '1d' | '5d' | '1w' | '1M' | '1y';
   limit?: number;
   startTime?: number;
   endTime?: number;
+}
+
+export type MarketDataSource = 'alpaca' | 'coinbase_pro' | 'demo';
+
+interface CandleFetchResult {
+  candles: CandleData[];
+  source: MarketDataSource;
+  fallback: boolean;
 }
 
 export class MarketDataService {
@@ -42,13 +61,22 @@ export class MarketDataService {
   private mapAlpacaTimeframe(timeframe: MarketDataOptions['timeframe']): string {
     const map: Record<MarketDataOptions['timeframe'], string> = {
       '1m': '1Min',
+      '2m': '2Min',
+      '3m': '3Min',
       '5m': '5Min',
+      '10m': '10Min',
       '15m': '15Min',
       '30m': '30Min',
+      '45m': '45Min',
       '1h': '1Hour',
+      '2h': '2Hour',
+      '3h': '3Hour',
       '4h': '4Hour',
       '1d': '1Day',
-      '1w': '1Week'
+      '5d': '1Day', // Will aggregate 5 days
+      '1w': '1Week',
+      '1M': '1Month',
+      '1y': '1Day' // Will aggregate to yearly
     };
 
     return map[timeframe] || '1Hour';
@@ -57,7 +85,7 @@ export class MarketDataService {
   /**
    * Fetch candle data from exchange or cache
    */
-  async getCandles(options: MarketDataOptions): Promise<CandleData[]> {
+  async getCandles(options: MarketDataOptions): Promise<{ candles: CandleData[]; source: MarketDataSource; cached: boolean; fallback: boolean }> {
     const cacheKey = [
       'candles',
       options.exchange,
@@ -74,15 +102,24 @@ export class MarketDataService {
       const cached = await this.redis.get(cacheKey);
       if (cached) {
         logger.debug(`Cache hit for ${cacheKey}`);
-        return JSON.parse(cached);
+        candleCacheHitCounter.inc({ requested_exchange: options.exchange, timeframe: options.timeframe });
+        return {
+          candles: JSON.parse(cached),
+          source: options.exchange,
+          cached: true,
+          fallback: false
+        };
       }
       
       // Fetch based on exchange
       const fetchTimeframe = options.timeframe === '1w' ? '1d' : options.timeframe;
       let candles: CandleData[];
+      let source: MarketDataSource = options.exchange;
+      let fallback = false;
 
       if (options.exchange === 'demo') {
         candles = this.generateDemoCandles(options);
+        source = 'demo';
       } else {
         const requestOptions = {
           ...options,
@@ -91,13 +128,14 @@ export class MarketDataService {
 
         switch (options.exchange) {
           case 'coinbase_pro':
-            candles = await this.fetchCoinbaseCandles(requestOptions);
+            ({ candles, source } = await this.fetchCoinbaseCandles(requestOptions));
             break;
           case 'alpaca':
-            candles = await this.fetchAlpacaCandles(requestOptions);
+            ({ candles, source, fallback } = await this.fetchAlpacaCandles(requestOptions));
             break;
           default:
             candles = this.generateDemoCandles(requestOptions);
+            source = 'demo';
             break;
         }
 
@@ -109,19 +147,44 @@ export class MarketDataService {
       // Cache the result
       await this.redis.setex(cacheKey, this.CACHE_TTL, JSON.stringify(candles));
       
-      return candles;
+      candleCacheMissCounter.inc({ requested_exchange: options.exchange, timeframe: options.timeframe });
+      if (fallback) {
+        candleFallbackCounter.inc({
+          requested_exchange: options.exchange,
+          timeframe: options.timeframe,
+          actual_source: source
+        });
+      }
+
+      return {
+        candles,
+        source,
+        cached: false,
+        fallback
+      };
       
     } catch (error: any) {
       logger.error('Error fetching candles:', error.message || error);
       // Fallback to demo data on error
-      return this.generateDemoCandles(options);
+      candleCacheMissCounter.inc({ requested_exchange: options.exchange, timeframe: options.timeframe });
+      candleFallbackCounter.inc({
+        requested_exchange: options.exchange,
+        timeframe: options.timeframe,
+        actual_source: 'demo'
+      });
+      return {
+        candles: this.generateDemoCandles(options),
+        source: 'demo',
+        cached: false,
+        fallback: true
+      };
     }
   }
 
   /**
    * Fetch candles from Coinbase Pro
    */
-  private async fetchCoinbaseCandles(options: MarketDataOptions): Promise<CandleData[]> {
+  private async fetchCoinbaseCandles(options: MarketDataOptions): Promise<CandleFetchResult> {
     const granularityMap: Record<string, number> = {
       '1m': 60,
       '5m': 300,
@@ -147,7 +210,7 @@ export class MarketDataService {
     const response = await axios.get(url, { params });
     
     // Coinbase returns: [timestamp, low, high, open, close, volume]
-    return response.data.map((candle: number[]) => ({
+    const candles = response.data.map((candle: number[]) => ({
       time: candle[0] * 1000, // Convert to milliseconds
       open: candle[3],
       high: candle[2],
@@ -155,21 +218,31 @@ export class MarketDataService {
       close: candle[4],
       volume: candle[5]
     })).reverse(); // Coinbase returns newest first
+
+    return {
+      candles,
+      source: 'coinbase_pro',
+      fallback: false
+    };
   }
 
   /**
    * Fetch candles from Alpaca
    */
-  private async fetchAlpacaCandles(options: MarketDataOptions): Promise<CandleData[]> {
+  private async fetchAlpacaCandles(options: MarketDataOptions): Promise<CandleFetchResult> {
     if (!this.hasAlpacaCredentials()) {
       logger.warn('Alpaca credentials missing, falling back to demo candles');
-      return this.generateDemoCandles(options);
+      return {
+        candles: this.generateDemoCandles(options),
+        source: 'demo',
+        fallback: true
+      };
     }
 
 
     try {
       const timeframe = this.mapAlpacaTimeframe(options.timeframe);
-      const limit = options.limit || 100;
+      const limit = Math.max(options.limit || 100, 100); // Ensure at least 100 bars
       const params: Record<string, string | number> = {
         timeframe,
         limit
@@ -195,18 +268,38 @@ export class MarketDataService {
         params
       });
 
+      logger.debug('Alpaca response structure:', {
+        hasData: !!response.data,
+        hasBars: !!response.data?.bars,
+        keys: Object.keys(response.data || {}),
+        symbol: options.symbol
+      });
 
-      // Alpaca returns bars in a bars object with the symbol as key
-      const bars = response.data?.bars?.[options.symbol] || response.data?.bars || [];
+      // Alpaca returns bars in different formats depending on the endpoint
+      let bars = response.data?.bars || [];
+
+      // If bars is an object with symbol as key
+      if (!Array.isArray(bars) && typeof bars === 'object') {
+        bars = bars[options.symbol] || bars[options.symbol.toUpperCase()] || [];
+      }
 
       if (!Array.isArray(bars) || bars.length === 0) {
-        logger.warn('Alpaca returned no bars, falling back to demo data', { symbol: options.symbol, timeframe });
-        return this.generateDemoCandles(options);
+        logger.warn('Alpaca returned no bars, falling back to demo data', {
+          symbol: options.symbol,
+          timeframe,
+          responseKeys: Object.keys(response.data || {}),
+          barsType: typeof bars
+        });
+        return {
+          candles: this.generateDemoCandles(options),
+          source: 'demo',
+          fallback: true
+        };
       }
 
       logger.info(`Successfully fetched ${bars.length} bars from Alpaca for ${options.symbol}`);
 
-      return bars.map((bar: any) => ({
+      const candles = bars.map((bar: any) => ({
         time: new Date(bar.t).getTime(),
         open: bar.o,
         high: bar.h,
@@ -214,12 +307,25 @@ export class MarketDataService {
         close: bar.c,
         volume: bar.v
       }));
+
+      return {
+        candles,
+        source: 'alpaca',
+        fallback: false
+      };
     } catch (error: any) {
       logger.error(`Error fetching Alpaca candles: ${error.message}`, {
         status: error.response?.status,
-        statusText: error.response?.statusText
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: `${this.alpacaBaseUrl}/v2/stocks/${encodeURIComponent(options.symbol)}/bars`,
+        params
       });
-      return this.generateDemoCandles(options);
+      return {
+        candles: this.generateDemoCandles(options),
+        source: 'demo',
+        fallback: true
+      };
     }
   }
 
@@ -348,13 +454,13 @@ export class MarketDataService {
    * Get current price for a symbol
    */
   async getCurrentPrice(symbol: string, exchange: string): Promise<number> {
-    const candles = await this.getCandles({
+    const { candles } = await this.getCandles({
       symbol,
       exchange: exchange as any,
       timeframe: '1m',
       limit: 1
     });
-    
+
     return candles.length > 0 ? candles[0].close : 0;
   }
 
@@ -377,7 +483,7 @@ export class MarketDataService {
     
     const { timeframe, limit } = timeframes[period];
     
-    const candles = await this.getCandles({
+    const { candles } = await this.getCandles({
       symbol,
       exchange: exchange as any,
       timeframe,

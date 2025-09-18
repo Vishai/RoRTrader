@@ -157,30 +157,74 @@ export class TechnicalAnalysisService {
    * Calculate Bollinger Bands
    */
   async calculateBollingerBands(
-    candles: CandleData[], 
-    period: number = 20, 
+    candles: CandleData[],
+    period: number = 20,
     stdDev: number = 2
   ): Promise<{ upper: number[], middle: number[], lower: number[] }> {
     const sma = await this.calculateSMA(candles, period);
     const closes = candles.map(c => c.close);
-    
+
     const upper: number[] = [];
     const lower: number[] = [];
-    
+
     for (let i = period - 1; i < closes.length; i++) {
       const slice = closes.slice(i - period + 1, i + 1);
       const mean = sma[i - period + 1];
-      
+
       // Calculate standard deviation
       const squaredDifferences = slice.map(value => Math.pow(value - mean, 2));
       const variance = squaredDifferences.reduce((a, b) => a + b, 0) / period;
       const standardDeviation = Math.sqrt(variance);
-      
+
       upper.push(mean + (standardDeviation * stdDev));
       lower.push(mean - (standardDeviation * stdDev));
     }
-    
+
     return { upper, middle: sma, lower };
+  }
+
+  /**
+   * Calculate Average True Range (ATR)
+   */
+  async calculateATR(candles: CandleData[], period: number = 14): Promise<number[]> {
+    if (candles.length < period + 1) {
+      return [];
+    }
+
+    const trueRanges: number[] = [];
+
+    // Calculate True Range for each candle
+    for (let i = 1; i < candles.length; i++) {
+      const high = candles[i].high;
+      const low = candles[i].low;
+      const prevClose = candles[i - 1].close;
+
+      // True Range is the greatest of:
+      // 1. Current High - Current Low
+      // 2. |Current High - Previous Close|
+      // 3. |Current Low - Previous Close|
+      const tr = Math.max(
+        high - low,
+        Math.abs(high - prevClose),
+        Math.abs(low - prevClose)
+      );
+
+      trueRanges.push(tr);
+    }
+
+    const atr: number[] = [];
+
+    // Calculate initial ATR using simple average
+    const initialATR = trueRanges.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    atr.push(initialATR);
+
+    // Calculate subsequent ATR values using smoothed average
+    for (let i = period; i < trueRanges.length; i++) {
+      const atrValue = ((atr[atr.length - 1] * (period - 1)) + trueRanges[i]) / period;
+      atr.push(atrValue);
+    }
+
+    return atr;
   }
 
   /**
@@ -252,7 +296,17 @@ export class TechnicalAnalysisService {
           );
           signal = this.determineBollingerSignal(input.candles, values);
           break;
-          
+
+        case 'ATR':
+          values = await this.calculateATR(input.candles, input.params.period || 14);
+          // ATR is a volatility indicator, not a directional signal
+          // Higher values mean higher volatility
+          const lastATR = values[values.length - 1];
+          const avgATR = values.reduce((a: number, b: number) => a + b, 0) / values.length;
+          strength = Math.min(100, (lastATR / avgATR) * 50);
+          signal = 'neutral'; // ATR doesn't provide directional signals
+          break;
+
         default:
           throw new Error(`Indicator ${input.indicator} not implemented`);
       }

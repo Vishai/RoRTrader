@@ -68,6 +68,9 @@ export function useMarketCandles(
             firstTimestamp: new Date(mockCandles[0].time * 1000).toISOString(),
             lastTimestamp: new Date(mockCandles[mockCandles.length - 1].time * 1000).toISOString(),
             count: mockCandles.length,
+            dataSource: 'demo',
+            cached: false,
+            fallback: true,
           },
         };
       }

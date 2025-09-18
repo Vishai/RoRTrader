@@ -225,7 +225,7 @@ export class CoachEvaluatorService {
             tagId: evaluation.tagId,
             status: evaluation.result.status,
             score: evaluation.result.score,
-            context: evaluation.result.details,
+            context: evaluation.result.details as Prisma.InputJsonValue,
           },
         });
 
@@ -255,7 +255,7 @@ export class CoachEvaluatorService {
 
   private resolveAdvice(tag: Prisma.CoachTagDefinitionGetPayload<{}> | undefined, result: TagEvaluationResult) {
     const severity = tag?.severity ?? CoachTagSeverity.INFO;
-    let state = CoachSessionState.SCANNING;
+    let state: CoachSessionState = CoachSessionState.SCANNING;
 
     if (result.status === CoachEvaluationStatus.GREEN) {
       state = severity === CoachTagSeverity.ENTRY || severity === CoachTagSeverity.SETUP ? CoachSessionState.READY : CoachSessionState.MANAGE;

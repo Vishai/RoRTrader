@@ -7,6 +7,17 @@ import { useChartIndicators } from '@/hooks/useIndicators';
 import { Candle } from '@/services/market-data.service';
 import { Loader2, AlertCircle, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
+const MARKET_SOURCE_LABELS: Record<'alpaca' | 'coinbase_pro' | 'demo', string> = {
+  alpaca: 'Alpaca (live)',
+  coinbase_pro: 'Coinbase Pro',
+  demo: 'Demo data',
+};
+
+const formatMarketSource = (source?: 'alpaca' | 'coinbase_pro' | 'demo') => {
+  if (!source) return undefined;
+  return MARKET_SOURCE_LABELS[source] ?? source;
+};
+
 interface TradingViewChartProps {
   symbol: string;
   exchange: 'coinbase' | 'alpaca' | 'binance';
@@ -41,7 +52,13 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
   // Fetch market data with real-time updates
-  const { candles, isLoading, error, isLive } = useChartData(
+  const {
+    candles,
+    isLoading,
+    error,
+    isLive: marketIsLive,
+    metadata: candleMetadata,
+  } = useChartData(
     symbol,
     exchange,
     timeframe,
@@ -121,13 +138,34 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         },
       });
 
-      const mainSeries = chart.addCandlestickSeries({
-        upColor: '#00FF88',
-        downColor: '#FF3366',
-        borderVisible: false,
-        wickUpColor: '#00FF88',
-        wickDownColor: '#FF3366',
-      });
+      let mainSeries;
+      try {
+        // Try v4 method name first
+        mainSeries = (chart as any).addCandlestickSeries({
+          upColor: '#00FF88',
+          downColor: '#FF3366',
+          borderVisible: false,
+          wickUpColor: '#00FF88',
+          wickDownColor: '#FF3366',
+        });
+      } catch (e) {
+        // Fall back to v3 method name
+        try {
+          mainSeries = (chart as any).addCandleSeries({
+            upColor: '#00FF88',
+            downColor: '#FF3366',
+            borderVisible: false,
+            wickUpColor: '#00FF88',
+            wickDownColor: '#FF3366',
+          });
+        } catch (e2) {
+          // Last resort - try line series
+          mainSeries = chart.addLineSeries({
+            color: '#00D4FF',
+            lineWidth: 2,
+          });
+        }
+      }
 
       const volumeSeries = chart.addHistogramSeries({
         priceFormat: {
@@ -280,10 +318,17 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
           </span>
         </div>
         
-        {isLive && (
+        {marketIsLive && (
           <div className="flex items-center gap-1.5 bg-[#00FF88]/10 px-2.5 py-1.5 rounded-lg">
             <div className="w-2 h-2 bg-[#00FF88] rounded-full animate-pulse" />
             <span className="text-xs text-[#00FF88]">LIVE</span>
+          </div>
+        )}
+        {formatMarketSource(candleMetadata?.dataSource) && (
+          <div className="flex items-center gap-1.5 bg-[#1C1C1F]/80 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-[#2A2A30] text-xs text-[#B8B8BD]">
+            <span>{formatMarketSource(candleMetadata?.dataSource)}</span>
+            {candleMetadata.cached && <span className="text-[#00D4FF]">• Cached</span>}
+            {candleMetadata.fallback && <span className="text-[#FF3366]">• Fallback</span>}
           </div>
         )}
       </div>

@@ -6,7 +6,22 @@ import { IndicatorCard } from '../indicators/IndicatorCard';
 import { useLiveIndicators } from '@/hooks/useIndicators';
 import { useIndicatorSignal } from '@/hooks/useIndicators';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { BatchIndicatorRequest } from '@/services/analysis.service';
+import {
+  BatchIndicatorRequest,
+  AnalysisMeta,
+  AnalysisDataSource,
+} from '@/services/analysis.service';
+
+const SOURCE_LABELS: Record<AnalysisDataSource, string> = {
+  alpaca: 'Alpaca (live)',
+  coinbase_pro: 'Coinbase Pro',
+  demo: 'Demo data',
+  provided: 'Provided candles',
+};
+
+const formatDataSource = (meta: AnalysisMeta): string => {
+  return SOURCE_LABELS[meta.dataSource] || meta.dataSource;
+};
 
 interface IndicatorConfig {
   id: string;
@@ -18,6 +33,7 @@ interface IndicatorConfig {
 interface IndicatorStatusCardsProps {
   symbol: string;
   timeframe: string;
+  exchange?: string;
   indicators: IndicatorConfig[];
   refreshInterval?: number;
   onIndicatorClick?: (indicator: any) => void;
@@ -27,6 +43,7 @@ interface IndicatorStatusCardsProps {
 export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
   symbol,
   timeframe,
+  exchange = 'demo', // Default to demo exchange
   indicators,
   refreshInterval = 5000,
   onIndicatorClick,
@@ -40,23 +57,27 @@ export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
     return {
       symbol,
       timeframe,
+      exchange,
       indicators: activeIndicators.map(ind => ({
         indicator: ind.id,
         parameters: ind.parameters || {},
       })),
-      bars: 100,
+      bars: 200, // Request more bars to ensure enough data for all indicators
     };
-  }, [symbol, timeframe, indicators]);
+  }, [symbol, timeframe, exchange, indicators]);
 
   // Fetch live indicator data
   const {
-    data,
+    data: batchResponse,
     isLoading,
     error,
     isLive,
     toggleLive,
     refetch,
   } = useLiveIndicators(batchRequest, refreshInterval);
+
+  const data = batchResponse?.data;
+  const meta = batchResponse?.meta;
 
   // Process overall signal
   const overallSignal = useIndicatorSignal(data?.overallSignal);
@@ -125,8 +146,28 @@ export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
         overallSignal?.isBearish && 'bg-accent-danger/10 border-accent-danger/30',
         overallSignal?.isNeutral && 'bg-text-tertiary/10 border-text-tertiary/30'
       )}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold">Overall Market Signal</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-semibold">Overall Market Signal</h3>
+            {data?.currentPrice && (
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-text-primary">
+                  ${data.currentPrice.toFixed(2)}
+                </span>
+                <span className={cn(
+                  "text-sm font-medium px-2 py-0.5 rounded-md",
+                  data.priceChange >= 0 ? 'bg-accent-secondary/20 text-accent-secondary' : 'bg-accent-danger/20 text-accent-danger'
+                )}>
+                  {data.priceChange >= 0 ? '↑' : '↓'} {Math.abs(data.priceChange).toFixed(2)} ({data.priceChangePercent.toFixed(2)}%)
+                </span>
+                {data.volume > 0 && (
+                  <span className="text-xs text-text-tertiary">
+                    Vol: {(data.volume / 1000).toFixed(1)}K
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {isLive && (
               <div className="flex items-center gap-1.5 bg-accent-secondary/10 px-2 py-1 rounded-md">
@@ -146,11 +187,11 @@ export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
             </button>
           </div>
         </div>
-        
-        <div className="flex items-center justify-between">
+
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <span 
-              className="text-2xl font-bold"
+            <span
+              className="text-xl font-bold"
               style={{ color: overallSignal?.color }}
             >
               {overallSignal?.message || 'Calculating...'}
@@ -159,7 +200,7 @@ export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
               {overallSignal?.strengthPercent}%
             </span>
           </div>
-          
+
           {data?.overallSignal && (
             <div className="flex gap-4 text-sm text-text-secondary">
               <span className="flex items-center gap-1">
@@ -177,12 +218,47 @@ export const IndicatorStatusCards: React.FC<IndicatorStatusCardsProps> = ({
             </div>
           )}
         </div>
-        
-        {data?.timestamp && (
-          <p className="text-xs text-text-tertiary mt-2">
-            Last updated: {new Date(data.timestamp).toLocaleTimeString()}
-          </p>
+
+        {/* Indicator Warnings and Triggers */}
+        {data?.overallSignal?.warnings && data.overallSignal.warnings.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border-default">
+            <h4 className="text-sm font-medium text-text-secondary mb-2">Key Levels & Warnings:</h4>
+            <div className="space-y-1">
+              {data.overallSignal.warnings.map((warning, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <AlertCircle className="w-3 h-3 text-accent-warning" />
+                  <span className="text-xs text-text-secondary">{warning}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
+
+        {/* Momentum Indicators */}
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          {indicatorData.slice(0, 3).map((ind) => (
+            <div key={ind.id} className="bg-background-elevated/50 rounded-md p-2">
+              <div className="text-xs text-text-tertiary">{ind.name}</div>
+              <div className="text-sm font-medium" style={{
+                color: ind.signal?.type === 'buy' ? '#00FF88' :
+                       ind.signal?.type === 'sell' ? '#FF3366' : '#B8B8BD'
+              }}>
+                {typeof ind.value === 'number' ? ind.value.toFixed(2) : '-'}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+          {data?.timestamp && (
+            <span>Last updated: {new Date(data.timestamp).toLocaleTimeString()}</span>
+          )}
+          {meta && (
+            <span className="px-2 py-1 rounded-md bg-background-elevated text-text-secondary">
+              Source: {formatDataSource(meta)}{meta.cached ? ' • Cached' : ''}{meta.fallback ? ' • Fallback' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Indicator Grid */}

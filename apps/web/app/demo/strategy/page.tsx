@@ -20,6 +20,44 @@ export default function StrategyDemoPage() {
   const [showBacktestResult, setShowBacktestResult] = useState(false);
   const [strategyNodes, setStrategyNodes] = useState<any[]>([]);
   const [selectedBot] = useState('demo-bot-1');
+  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const [customSymbol, setCustomSymbol] = useState('');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
+  const [customTimeframe, setCustomTimeframe] = useState('');
+
+  // Popular stock symbols
+  const popularSymbols = [
+    'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA',
+    'META', 'NVDA', 'JPM', 'V', 'WMT',
+    'JNJ', 'PG', 'MA', 'HD', 'DIS'
+  ];
+
+  // Available timeframes organized by category
+  const timeframeCategories = {
+    'Minutes': [
+      { value: '1m', label: '1 min' },
+      { value: '2m', label: '2 min' },
+      { value: '3m', label: '3 min' },
+      { value: '5m', label: '5 min' },
+      { value: '10m', label: '10 min' },
+      { value: '15m', label: '15 min' },
+      { value: '30m', label: '30 min' },
+      { value: '45m', label: '45 min' },
+    ],
+    'Hours': [
+      { value: '1h', label: '1 hour' },
+      { value: '2h', label: '2 hours' },
+      { value: '3h', label: '3 hours' },
+      { value: '4h', label: '4 hours' },
+    ],
+    'Days+': [
+      { value: '1d', label: '1 day' },
+      { value: '5d', label: '5 days' },
+      { value: '1w', label: '1 week' },
+      { value: '1M', label: '1 month' },
+      { value: '1y', label: '1 year' },
+    ]
+  };
 
   // Fetch real data from API
   const { data: availableIndicators, isLoading: indicatorsLoading } = useIndicators();
@@ -27,12 +65,11 @@ export default function StrategyDemoPage() {
 
   // Configure active indicators for the demo
   const activeIndicators = useMemo(() => [
-    { id: 'rsi', name: 'RSI', parameters: { period: 14 }, isActive: true },
-    { id: 'macd', name: 'MACD', parameters: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }, isActive: true },
-    { id: 'bollinger', name: 'Bollinger Bands', parameters: { period: 20, standardDeviations: 2 }, isActive: true },
-    { id: 'ema', name: 'EMA Cross', parameters: { shortPeriod: 20, longPeriod: 50 }, isActive: true },
-    { id: 'stochastic', name: 'Stochastic', parameters: { kPeriod: 14, dPeriod: 3, smooth: 3 }, isActive: false },
-    { id: 'atr', name: 'ATR', parameters: { period: 14 }, isActive: true },
+    { id: 'RSI', name: 'RSI', parameters: { period: 14 }, isActive: true },
+    { id: 'MACD', name: 'MACD', parameters: { fast_period: 12, slow_period: 26, signal_period: 9 }, isActive: true },
+    { id: 'EMA', name: 'EMA', parameters: { period: 20 }, isActive: true },
+    { id: 'SMA', name: 'SMA', parameters: { period: 20 }, isActive: true }, // Changed from 50 to 20
+    { id: 'ATR', name: 'ATR', parameters: { period: 14 }, isActive: true },
   ], []);
 
   const tabs = [
@@ -94,13 +131,18 @@ export default function StrategyDemoPage() {
           <div className="space-y-8">
             {/* Trading Chart with Real Data */}
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-text-primary mb-4">
-                Live Chart with Technical Indicators
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-text-primary">
+                  Live Chart - {selectedSymbol}
+                </h2>
+                <span className="text-sm text-text-secondary">
+                  Alpaca Market Data
+                </span>
+              </div>
               <TradingViewChart
-                symbol="BTC-USD"
-                exchange="coinbase"
-                timeframe="1h"
+                symbol={selectedSymbol}
+                exchange="alpaca"
+                timeframe={selectedTimeframe as any}
                 height={500}
                 enableLive={true}
                 indicators={[
@@ -114,14 +156,103 @@ export default function StrategyDemoPage() {
 
             {/* Live Indicator Status Cards */}
             <div>
-              <h2 className="text-xl font-semibold text-text-primary mb-4">
-                Real-Time Indicator Analysis
-              </h2>
+              <div className="mb-4 space-y-3">
+                <h2 className="text-xl font-semibold text-text-primary">
+                  Real-Time Indicator Analysis
+                </h2>
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Symbol Selector */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-text-secondary">Symbol:</label>
+                    <select
+                      value={selectedSymbol}
+                      onChange={(e) => setSelectedSymbol(e.target.value)}
+                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                    >
+                      <optgroup label="Popular Stocks">
+                        {popularSymbols.map(symbol => (
+                          <option key={symbol} value={symbol}>{symbol}</option>
+                        ))}
+                      </optgroup>
+                      {customSymbol && (
+                        <optgroup label="Custom">
+                          <option value={customSymbol}>{customSymbol}</option>
+                        </optgroup>
+                      )}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Custom ticker"
+                      value={customSymbol}
+                      onChange={(e) => setCustomSymbol(e.target.value.toUpperCase())}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && customSymbol) {
+                          setSelectedSymbol(customSymbol);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary w-24"
+                    />
+                  </div>
+
+                  {/* Timeframe Selector */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-text-secondary">Timeframe:</label>
+                    <select
+                      value={selectedTimeframe}
+                      onChange={(e) => setSelectedTimeframe(e.target.value)}
+                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
+                    >
+                      {Object.entries(timeframeCategories).map(([category, timeframes]) => (
+                        <optgroup key={category} label={category}>
+                          {timeframes.map(tf => (
+                            <option key={tf.value} value={tf.value}>{tf.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      {customTimeframe && (
+                        <optgroup label="Custom">
+                          <option value={customTimeframe}>{customTimeframe}</option>
+                        </optgroup>
+                      )}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Custom (e.g. 7m)"
+                      value={customTimeframe}
+                      onChange={(e) => setCustomTimeframe(e.target.value.toLowerCase())}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && customTimeframe) {
+                          setSelectedTimeframe(customTimeframe);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary w-28"
+                    />
+                  </div>
+
+                  {/* Quick Timeframe Buttons */}
+                  <div className="flex items-center gap-1">
+                    {['1m', '5m', '15m', '1h', '1d'].map(tf => (
+                      <button
+                        key={tf}
+                        onClick={() => setSelectedTimeframe(tf)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          selectedTimeframe === tf
+                            ? 'bg-accent-primary text-white'
+                            : 'bg-background-elevated text-text-secondary hover:bg-background-tertiary'
+                        }`}
+                      >
+                        {tf}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <IndicatorStatusCards
-                symbol="BTC-USD"
-                timeframe="1h"
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe as any}
+                exchange="alpaca"
                 indicators={activeIndicators}
-                refreshInterval={5000}
+                refreshInterval={10000} // Increased to 10 seconds to reduce API load
                 onIndicatorClick={(indicator) => console.log('Clicked:', indicator)}
               />
             </div>

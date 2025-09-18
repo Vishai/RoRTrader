@@ -25,9 +25,12 @@ export interface MarketDataResponse {
   timeframe: string;
   candles: Candle[];
   metadata: {
-    firstTimestamp: string;
-    lastTimestamp: string;
+    firstTimestamp: string | null;
+    lastTimestamp: string | null;
     count: number;
+    dataSource?: 'alpaca' | 'coinbase_pro' | 'demo';
+    cached?: boolean;
+    fallback?: boolean;
   };
 }
 
@@ -85,9 +88,16 @@ export class MarketDataService {
 
   // Get historical candles
   static async getCandles(request: MarketDataRequest): Promise<MarketDataResponse> {
-    return apiCall<MarketDataResponse>('get', '/api/market/candles', null, {
-      params: request,
-    });
+    const response = await apiCall<{ success: boolean; data: MarketDataResponse }>(
+      'get',
+      '/api/market/candles',
+      null,
+      {
+        params: request,
+      }
+    );
+
+    return response.data;
   }
 
   // Get current ticker data

@@ -173,7 +173,7 @@ export function useChartIndicators(
 
   // Get cached results
   const results = indicators.map(indicator => {
-    const data = queryClient.getQueryData<IndicatorCalculationResponse>([
+    const response = queryClient.getQueryData<IndicatorCalculationResponse>([
       'chart-indicator',
       symbol,
       timeframe,
@@ -182,7 +182,9 @@ export function useChartIndicators(
     ]);
     return {
       ...indicator,
-      data,
+      data: response?.data,
+      meta: response?.meta,
+      success: response?.success,
       isLoading: calculateIndicator.isLoading,
       error: calculateIndicator.error,
     };
