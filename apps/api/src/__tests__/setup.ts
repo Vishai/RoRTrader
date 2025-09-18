@@ -12,6 +12,7 @@ jest.mock('@/shared/database/prisma', () => ({
   prisma: {
     $connect: jest.fn(),
     $disconnect: jest.fn(),
+    $transaction: jest.fn(),
     user: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -28,6 +29,32 @@ jest.mock('@/shared/database/prisma', () => ({
       deleteMany: jest.fn(),
     },
     auditLog: {
+      create: jest.fn(),
+    },
+    coachSession: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    coachSnapshot: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
+    coachRuleSet: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
+    coachTagDefinition: {
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    coachEvaluation: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    coachAdvice: {
       create: jest.fn(),
     },
   },

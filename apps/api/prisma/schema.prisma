@@ -12,106 +12,110 @@ datasource db {
 
 // User model with authentication and subscription info
 model User {
-  id                   String    @id @default(uuid())
-  email                String    @unique
-  passwordHash         String
-  totpSecret           String?   // Encrypted
-  totpEnabled          Boolean   @default(false)
-  backupCodes          Json?     // Encrypted backup codes
-  subscriptionTier     Tier      @default(FREE)
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String
+  totpSecret            String? // Encrypted
+  totpEnabled           Boolean   @default(false)
+  backupCodes           Json? // Encrypted backup codes
+  subscriptionTier      Tier      @default(FREE)
   subscriptionExpiresAt DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
   // Relations
-  bots                 Bot[]
-  exchangeCredentials  ExchangeCredential[]
+  bots                Bot[]
+  exchangeCredentials ExchangeCredential[]
   sessions            Session[]
   auditLogs           AuditLog[]
-  
+  CoachRuleSet        CoachRuleSet[]
+  CoachSession        CoachSession[]
+
   @@index([email])
 }
 
 // Active user sessions
 model Session {
-  id          String   @id @default(uuid())
-  userId      String
-  token       String   @unique
-  device      String
-  browser     String
-  ipAddress   String
-  location    String?
-  lastActive  DateTime @default(now())
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  device     String
+  browser    String
+  ipAddress  String
+  location   String?
+  lastActive DateTime @default(now())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
   // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([token])
 }
 
 // Trading bots
 model Bot {
-  id              String      @id @default(uuid())
-  userId          String
-  name            String
-  description     String?
-  assetType       AssetType
-  exchange        Exchange
-  tradingMode     TradingMode @default(PAPER)
-  webhookSecret   String      @unique
-  positionSizing  Json        // {type: 'fixed' | 'percentage', value: number}
-  riskManagement  Json?       // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
-  metadata        Json?       // Additional metadata (e.g., isDemo, performance, tradeFrequency)
-  status          BotStatus   @default(STOPPED)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
+  id             String      @id @default(uuid())
+  userId         String
+  name           String
+  description    String?
+  assetType      AssetType
+  exchange       Exchange
+  tradingMode    TradingMode @default(PAPER)
+  webhookSecret  String      @unique
+  positionSizing Json // {type: 'fixed' | 'percentage', value: number}
+  riskManagement Json? // {stopLoss?: number, takeProfit?: number, maxDailyLoss?: number}
+  metadata       Json? // Additional metadata (e.g., isDemo, performance, tradeFrequency)
+  status         BotStatus   @default(STOPPED)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
   // Relations
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  webhookLogs     WebhookLog[]
-  trades          Trade[]
-  performance     BotPerformance[]
-  strategy        BotStrategy?
-  
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookLogs  WebhookLog[]
+  trades       Trade[]
+  performance  BotPerformance[]
+  strategy     BotStrategy?
+  CoachRuleSet CoachRuleSet[]
+  CoachSession CoachSession[]
+
   @@index([userId])
   @@index([webhookSecret])
 }
 
 // Exchange API credentials (encrypted)
 model ExchangeCredential {
-  id                String    @id @default(uuid())
-  userId            String
-  exchange          Exchange
-  encryptedApiKey   String    // Encrypted with KMS
-  encryptedApiSecret String   // Encrypted with KMS
-  keyPermissions    Json?     // {canTrade: boolean, canRead: boolean, etc}
-  lastUsedAt        DateTime?
-  createdAt         DateTime  @default(now())
-  
+  id                 String    @id @default(uuid())
+  userId             String
+  exchange           Exchange
+  encryptedApiKey    String // Encrypted with KMS
+  encryptedApiSecret String // Encrypted with KMS
+  keyPermissions     Json? // {canTrade: boolean, canRead: boolean, etc}
+  lastUsedAt         DateTime?
+  createdAt          DateTime  @default(now())
+
   // Relations
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, exchange])
 }
 
 // Webhook logs for tracking all incoming signals
 model WebhookLog {
-  id          String         @id @default(uuid())
-  botId       String
-  payload     Json           // Complete webhook payload
-  status      WebhookStatus  @default(RECEIVED)
+  id           String        @id @default(uuid())
+  botId        String
+  payload      Json // Complete webhook payload
+  status       WebhookStatus @default(RECEIVED)
   errorMessage String?
-  metadata     Json?          // Additional metadata (e.g., simulated)
-  processedAt DateTime?
-  createdAt   DateTime       @default(now())
-  
+  metadata     Json? // Additional metadata (e.g., simulated)
+  processedAt  DateTime?
+  createdAt    DateTime      @default(now())
+
   // Relations
-  bot         Bot            @relation(fields: [botId], references: [id], onDelete: Cascade)
-  trades      Trade[]
-  
+  bot    Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  trades Trade[]
+
   @@index([botId, createdAt])
 }
 
@@ -123,7 +127,7 @@ model Trade {
   exchange        Exchange
   symbol          String
   side            OrderSide
-  orderType       String      // market, limit, stop, etc
+  orderType       String // market, limit, stop, etc
   quantity        Decimal     @db.Decimal(20, 8)
   price           Decimal?    @db.Decimal(20, 8)
   executedPrice   Decimal?    @db.Decimal(20, 8)
@@ -131,14 +135,14 @@ model Trade {
   exchangeOrderId String?
   fees            Decimal?    @db.Decimal(20, 8)
   errorMessage    String?
-  metadata        Json?       // Additional metadata (e.g., isDemo, pnl)
+  metadata        Json? // Additional metadata (e.g., isDemo, pnl)
   createdAt       DateTime    @default(now())
   executedAt      DateTime?
-  
+
   // Relations
-  bot             Bot         @relation(fields: [botId], references: [id], onDelete: Cascade)
-  webhookLog      WebhookLog? @relation(fields: [webhookLogId], references: [id])
-  
+  bot        Bot         @relation(fields: [botId], references: [id], onDelete: Cascade)
+  webhookLog WebhookLog? @relation(fields: [webhookLogId], references: [id])
+
   @@index([botId, createdAt])
 }
 
@@ -154,30 +158,30 @@ model BotPerformance {
   sortinoRatio    Decimal? @db.Decimal(8, 4)
   maxDrawdown     Decimal? @db.Decimal(8, 4)
   profitFactor    Decimal? @db.Decimal(8, 4)
-  metricsSnapshot Json?    // Additional metrics as JSON
+  metricsSnapshot Json? // Additional metrics as JSON
   createdAt       DateTime @default(now())
-  
+
   // Relations
-  bot             Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
-  
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
   @@unique([botId, date])
 }
 
 // Audit logs for compliance and security
 model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String?
-  action      String   // login, logout, bot_created, trade_executed, etc
+  id           String   @id @default(uuid())
+  userId       String?
+  action       String // login, logout, bot_created, trade_executed, etc
   resourceType String? // user, bot, trade, etc
-  resourceId  String?
-  ipAddress   String?
-  userAgent   String?
-  metadata    Json?    // Additional context
-  createdAt   DateTime @default(now())
-  
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json? // Additional context
+  createdAt    DateTime @default(now())
+
   // Relations
-  user        User?    @relation(fields: [userId], references: [id])
-  
+  user User? @relation(fields: [userId], references: [id])
+
   @@index([userId, createdAt])
   @@index([action, createdAt])
 }
@@ -235,117 +239,120 @@ enum TradeStatus {
 
 // Bot trading strategy configuration
 model BotStrategy {
-  id                String              @id @default(uuid())
-  botId             String              @unique
-  name              String
-  description       String?
-  templateId        String?             // Reference to template if used
-  isActive          Boolean             @default(true)
-  version           Int                 @default(1)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
+  id          String   @id @default(uuid())
+  botId       String   @unique
+  name        String
+  description String?
+  templateId  String? // Reference to template if used
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
-  bot               Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
-  template          StrategyTemplate?   @relation(fields: [templateId], references: [id])
-  indicators        StrategyIndicator[]
-  entryConditions   StrategyCondition[] @relation("EntryConditions")
-  exitConditions    StrategyCondition[] @relation("ExitConditions")
-  backtests         StrategyBacktest[]
-  
+  bot             Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
+  template        StrategyTemplate?   @relation(fields: [templateId], references: [id])
+  indicators      StrategyIndicator[]
+  entryConditions StrategyCondition[] @relation("EntryConditions")
+  exitConditions  StrategyCondition[] @relation("ExitConditions")
+  backtests       StrategyBacktest[]
+  CoachRuleSet    CoachRuleSet[]
+
   @@index([botId])
   @@index([templateId])
 }
 
 // Indicators used in a strategy
 model StrategyIndicator {
-  id                String          @id @default(uuid())
-  strategyId        String
-  indicatorType     IndicatorType
-  params            Json            // {period: 20, stdDev: 2, etc}
-  color             String?         // For UI display
-  displayOrder      Int             @default(0)
-  createdAt         DateTime        @default(now())
-  
+  id            String        @id @default(uuid())
+  strategyId    String
+  indicatorType IndicatorType
+  params        Json // {period: 20, stdDev: 2, etc}
+  color         String? // For UI display
+  displayOrder  Int           @default(0)
+  createdAt     DateTime      @default(now())
+
   // Relations
-  strategy          BotStrategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
-  conditions        StrategyCondition[]
-  
+  strategy   BotStrategy         @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  conditions StrategyCondition[]
+
   @@index([strategyId])
 }
 
 // Strategy conditions (entry/exit rules)
 model StrategyCondition {
-  id                String              @id @default(uuid())
-  strategyId        String
-  type              ConditionType       // ENTRY or EXIT
-  indicatorId       String?
-  operator          ConditionOperator
-  compareToType     CompareToType       // VALUE, INDICATOR, PRICE
-  compareToValue    Json                // {value: 30} or {indicatorId: "uuid", offset: 0}
-  logicalOperator   LogicalOperator?    // AND/OR for combining with next condition
-  orderIndex        Int                 @default(0)
-  createdAt         DateTime            @default(now())
-  
+  id              String            @id @default(uuid())
+  strategyId      String
+  exitStrategyId  String?
+  type            ConditionType // ENTRY or EXIT
+  indicatorId     String?
+  operator        ConditionOperator
+  compareToType   CompareToType // VALUE, INDICATOR, PRICE
+  compareToValue  Json // {value: 30} or {indicatorId: "uuid", offset: 0}
+  logicalOperator LogicalOperator? // AND/OR for combining with next condition
+  orderIndex      Int               @default(0)
+  createdAt       DateTime          @default(now())
+
   // Relations
-  strategy          BotStrategy         @relation("EntryConditions", fields: [strategyId], references: [id], onDelete: Cascade)
-  exitStrategy      BotStrategy?        @relation("ExitConditions", fields: [strategyId], references: [id], onDelete: Cascade)
-  indicator         StrategyIndicator?  @relation(fields: [indicatorId], references: [id])
-  
+  strategy     BotStrategy        @relation("EntryConditions", fields: [strategyId], references: [id], onDelete: Cascade)
+  exitStrategy BotStrategy?       @relation("ExitConditions", fields: [exitStrategyId], references: [id], onDelete: Cascade)
+  indicator    StrategyIndicator? @relation(fields: [indicatorId], references: [id])
+
   @@index([strategyId, type])
+  @@index([exitStrategyId])
 }
 
 // Strategy backtest results
 model StrategyBacktest {
-  id                String          @id @default(uuid())
-  strategyId        String
-  startDate         DateTime
-  endDate           DateTime
-  initialCapital    Decimal         @db.Decimal(20, 8)
-  finalCapital      Decimal         @db.Decimal(20, 8)
-  totalTrades       Int
-  winningTrades     Int
-  losingTrades      Int
-  totalReturn       Decimal         @db.Decimal(10, 4)
-  sharpeRatio       Decimal?        @db.Decimal(8, 4)
-  sortinoRatio      Decimal?        @db.Decimal(8, 4)
-  maxDrawdown       Decimal         @db.Decimal(8, 4)
-  profitFactor      Decimal?        @db.Decimal(8, 4)
-  winRate           Decimal         @db.Decimal(5, 2)
-  avgWin            Decimal?        @db.Decimal(20, 8)
-  avgLoss           Decimal?        @db.Decimal(20, 8)
-  results           Json            // Detailed trade-by-trade results
-  settings          Json            // Backtest settings used
-  createdAt         DateTime        @default(now())
-  
+  id             String   @id @default(uuid())
+  strategyId     String
+  startDate      DateTime
+  endDate        DateTime
+  initialCapital Decimal  @db.Decimal(20, 8)
+  finalCapital   Decimal  @db.Decimal(20, 8)
+  totalTrades    Int
+  winningTrades  Int
+  losingTrades   Int
+  totalReturn    Decimal  @db.Decimal(10, 4)
+  sharpeRatio    Decimal? @db.Decimal(8, 4)
+  sortinoRatio   Decimal? @db.Decimal(8, 4)
+  maxDrawdown    Decimal  @db.Decimal(8, 4)
+  profitFactor   Decimal? @db.Decimal(8, 4)
+  winRate        Decimal  @db.Decimal(5, 2)
+  avgWin         Decimal? @db.Decimal(20, 8)
+  avgLoss        Decimal? @db.Decimal(20, 8)
+  results        Json // Detailed trade-by-trade results
+  settings       Json // Backtest settings used
+  createdAt      DateTime @default(now())
+
   // Relations
-  strategy          BotStrategy     @relation(fields: [strategyId], references: [id], onDelete: Cascade)
-  
+  strategy BotStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
   @@index([strategyId, createdAt])
 }
 
 // Pre-built strategy templates
 model StrategyTemplate {
-  id                String          @id @default(uuid())
-  name              String          @unique
-  displayName       String
-  description       String
-  category          TemplateCategory
-  difficulty        Difficulty
-  timeframe         String          // "5m", "1h", "1d", etc
-  assetTypes        AssetType[]     // Which asset types this works for
-  configuration     Json            // Complete strategy configuration
-  performance       Json?           // Historical performance metrics
-  isPublic          Boolean         @default(true)
-  author            String          @default("RoR Trader")
-  usageCount        Int             @default(0)
-  rating            Decimal?        @db.Decimal(3, 2) // Average user rating
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  
+  id            String           @id @default(uuid())
+  name          String           @unique
+  displayName   String
+  description   String
+  category      TemplateCategory
+  difficulty    Difficulty
+  timeframe     String // "5m", "1h", "1d", etc
+  assetTypes    AssetType[] // Which asset types this works for
+  configuration Json // Complete strategy configuration
+  performance   Json? // Historical performance metrics
+  isPublic      Boolean          @default(true)
+  author        String           @default("RoR Trader")
+  usageCount    Int              @default(0)
+  rating        Decimal?         @db.Decimal(3, 2) // Average user rating
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
   // Relations
-  strategies        BotStrategy[]
-  
+  strategies BotStrategy[]
+
   @@index([category])
   @@index([difficulty])
 }
@@ -407,4 +414,218 @@ enum Difficulty {
   INTERMEDIATE
   ADVANCED
   EXPERT
+}
+
+// Trading coach models
+model CoachRuleSet {
+  id          String             @id @default(uuid())
+  ownerUserId String
+  botId       String?
+  strategyId  String?
+  name        String
+  version     Int                @default(1)
+  summary     String?
+  config      Json // Serialized rules DSL
+  thresholds  Json? // Traffic light thresholds, decay settings
+  status      CoachRuleSetStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  owner    User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  bot      Bot?                 @relation(fields: [botId], references: [id], onDelete: Cascade)
+  strategy BotStrategy?         @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  tags     CoachTagDefinition[]
+  sessions CoachSession[]
+  metrics  CoachMetrics[]
+
+  @@unique([ownerUserId, name, version])
+  @@index([ownerUserId])
+  @@index([botId])
+  @@index([strategyId])
+}
+
+model CoachTagDefinition {
+  id          String           @id @default(uuid())
+  ruleSetId   String
+  tagKey      String
+  name        String
+  category    String?
+  description String?
+  severity    CoachTagSeverity @default(INFO)
+  rule        Json // Normalized condition definition
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  ruleSet     CoachRuleSet      @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  evaluations CoachEvaluation[]
+
+  @@unique([ruleSetId, tagKey])
+  @@index([ruleSetId])
+}
+
+model CoachSession {
+  id               String            @id @default(uuid())
+  userId           String
+  botId            String?
+  ruleSetId        String
+  symbol           String
+  timeframeMinutes Int
+  state            CoachSessionState @default(SCANNING)
+  startedAt        DateTime          @default(now())
+  lastEvaluatedAt  DateTime?
+  endedAt          DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot         Bot?              @relation(fields: [botId], references: [id], onDelete: Cascade)
+  ruleSet     CoachRuleSet      @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  snapshots   CoachSnapshot[]
+  evaluations CoachEvaluation[]
+  trades      CoachTrade[]
+
+  @@index([userId])
+  @@index([botId])
+  @@index([ruleSetId])
+  @@index([symbol, timeframeMinutes])
+}
+
+model CoachSnapshot {
+  id         String              @id @default(uuid())
+  sessionId  String
+  source     CoachSnapshotSource
+  capturedAt DateTime            @default(now())
+  imageUrl   String?
+  features   Json?
+  payload    Json? // Raw alert payload or CV metadata
+  createdAt  DateTime            @default(now())
+
+  session     CoachSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluations CoachEvaluation[]
+
+  @@index([sessionId, capturedAt])
+}
+
+model CoachEvaluation {
+  id         String                @id @default(uuid())
+  sessionId  String
+  snapshotId String?
+  tagId      String
+  status     CoachEvaluationStatus
+  score      Decimal?              @db.Decimal(5, 4)
+  context    Json?
+  createdAt  DateTime              @default(now())
+
+  session  CoachSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  snapshot CoachSnapshot?     @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  tag      CoachTagDefinition @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  advice   CoachAdvice?
+  trade    CoachTrade?
+
+  @@index([sessionId])
+  @@index([snapshotId])
+  @@index([tagId, createdAt])
+}
+
+model CoachAdvice {
+  id           String            @id @default(uuid())
+  evaluationId String            @unique
+  sessionState CoachSessionState
+  headline     String
+  body         String?
+  createdAt    DateTime          @default(now())
+
+  evaluation CoachEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+}
+
+model CoachTrade {
+  id           String              @id @default(uuid())
+  sessionId    String
+  evaluationId String?             @unique
+  direction    CoachTradeDirection
+  origin       CoachTradeOrigin    @default(AUTO)
+  entryPrice   Decimal?            @db.Decimal(20, 8)
+  stopPrice    Decimal?            @db.Decimal(20, 8)
+  targetPrice  Decimal?            @db.Decimal(20, 8)
+  riskReward   Decimal?            @db.Decimal(10, 4)
+  rMultiple    Decimal?            @db.Decimal(10, 4)
+  positionSize Decimal?            @db.Decimal(20, 8)
+  tagsApplied  Json?
+  notes        String?
+  openedAt     DateTime            @default(now())
+  closedAt     DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  session    CoachSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluation CoachEvaluation? @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([evaluationId])
+}
+
+model CoachMetrics {
+  id               String   @id @default(uuid())
+  ruleSetId        String
+  tagSetHash       String
+  samples          Int      @default(0)
+  wins             Int      @default(0)
+  losses           Int      @default(0)
+  expectedValue    Decimal? @db.Decimal(10, 4)
+  winRatePosterior Decimal? @db.Decimal(5, 4)
+  riskRewardMean   Decimal? @db.Decimal(10, 4)
+  priorAlpha       Decimal? @db.Decimal(10, 4)
+  priorBeta        Decimal? @db.Decimal(10, 4)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ruleSet CoachRuleSet @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleSetId, tagSetHash])
+  @@index([ruleSetId])
+}
+
+enum CoachRuleSetStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CoachTagSeverity {
+  INFO
+  SETUP
+  ENTRY
+  EXIT
+}
+
+enum CoachSnapshotSource {
+  ALERT
+  EXTENSION
+  DESKTOP
+}
+
+enum CoachEvaluationStatus {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum CoachSessionState {
+  SCANNING
+  SETUP_FORMING
+  READY
+  TRIGGERED
+  IN_TRADE
+  MANAGE
+  EXITED
+}
+
+enum CoachTradeDirection {
+  LONG
+  SHORT
+}
+
+enum CoachTradeOrigin {
+  MANUAL
+  AUTO
 }

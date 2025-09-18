@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -10,6 +11,7 @@ import { authRoutes } from './modules/auth';
 import { demoRoutes } from './modules/demo';
 import { analysisRoutes } from './modules/analysis';
 import { strategyRoutes } from './modules/strategy';
+import { coachRoutes } from './modules/coach';
 import { prisma } from './shared/database/prisma';
 
 // Load environment variables
@@ -68,6 +70,7 @@ app.get('/api', (req, res) => {
       demo: '/api/demo/*',
       analysis: '/api/analysis/*',
       strategies: '/api/strategies/*',
+      coach: '/api/coach/*',
       bots: '/api/bots/*',
       webhooks: '/webhook/:botId/:secret',
     },
@@ -79,6 +82,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/strategies', strategyRoutes);
+app.use('/api/coach', coachRoutes);
 
 // 404 handler
 app.use((req, res) => {

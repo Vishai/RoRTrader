@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Card, Badge, Stat } from '@/components/ui';
 import { 
   mockPortfolioStats, 
@@ -24,8 +24,27 @@ import {
   StopCircle,
   AlertCircle
 } from 'lucide-react';
+import { CoachRibbon } from '@/components/coach';
+import { CoachEvaluation, CoachSession, fetchCoachEvaluations, fetchCoachSessions } from '@/lib/api/coach';
 
 export default function DashboardPage() {
+  const [coachSessions, setCoachSessions] = useState<CoachSession[]>([]);
+  const [coachEvaluations, setCoachEvaluations] = useState<CoachEvaluation[]>([]);
+
+  useEffect(() => {
+    async function loadCoachData() {
+      const sessions = await fetchCoachSessions();
+      setCoachSessions(sessions);
+      if (sessions.length > 0) {
+        const evaluations = await fetchCoachEvaluations(sessions[0].id);
+        setCoachEvaluations(evaluations);
+      }
+    }
+    void loadCoachData();
+  }, []);
+
+  const activeCoachSession = coachSessions[0];
+
   return (
     <div className="min-h-screen bg-background-primary">
       {/* Header */}
@@ -75,6 +94,18 @@ export default function DashboardPage() {
             Create Bot
           </Button>
         </div>
+
+        {activeCoachSession && (
+          <div className="mb-8">
+            <CoachRibbon
+              sessionId={activeCoachSession.id}
+              evaluations={coachEvaluations}
+              riskReward={1.6}
+              expectedValue={0.42}
+              updatedAt={activeCoachSession.updatedAt}
+            />
+          </div>
+        )}
 
         {/* Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

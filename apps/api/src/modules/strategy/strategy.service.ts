@@ -97,6 +97,7 @@ export class StrategyService {
         await prisma.strategyCondition.createMany({
           data: data.entryConditions.map((cond, index) => ({
             strategyId: strategy.id,
+            exitStrategyId: null,
             type: 'ENTRY',
             indicatorId: cond.indicatorId ? indicatorMap.get(parseInt(cond.indicatorId)) : null,
             operator: cond.operator as any,
@@ -113,6 +114,7 @@ export class StrategyService {
         await prisma.strategyCondition.createMany({
           data: data.exitConditions.map((cond, index) => ({
             strategyId: strategy.id,
+            exitStrategyId: strategy.id,
             type: 'EXIT',
             indicatorId: cond.indicatorId ? indicatorMap.get(parseInt(cond.indicatorId)) : null,
             operator: cond.operator as any,
@@ -270,6 +272,7 @@ export class StrategyService {
           await tx.strategyCondition.createMany({
             data: data.entryConditions.map((cond, index) => ({
               strategyId,
+              exitStrategyId: null,
               type: 'ENTRY' as const,
               indicatorId: cond.indicatorId ? indicatorMap.get(parseInt(cond.indicatorId)) : null,
               operator: cond.operator as any,
@@ -286,6 +289,7 @@ export class StrategyService {
           await tx.strategyCondition.createMany({
             data: data.exitConditions.map((cond, index) => ({
               strategyId,
+              exitStrategyId: strategyId,
               type: 'EXIT' as const,
               indicatorId: cond.indicatorId ? indicatorMap.get(parseInt(cond.indicatorId)) : null,
               operator: cond.operator as any,

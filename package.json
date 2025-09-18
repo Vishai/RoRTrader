@@ -22,6 +22,8 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
+    "coach:worker": "npm run coach:worker -w @ror-trader/api",
+    "coach:demo": "npm run coach:demo -w @ror-trader/api",
     "prepare": "husky install"
   },
   "devDependencies": {
