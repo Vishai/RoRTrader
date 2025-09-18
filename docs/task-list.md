@@ -130,7 +130,7 @@ Following the UI-First Development approach outlined in the PRD for maximum visi
 
 ### 2.2 Real-time Features
 
-- [ ] Set up WebSocket connection
+- [x] Set up WebSocket connection
 - [ ] Implement live price updates
 - [ ] Add real-time trade notifications
 - [ ] Create activity stream updates

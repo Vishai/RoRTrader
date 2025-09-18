@@ -38,6 +38,28 @@ Services will be available at:
 - API: http://localhost:3001
 - API Health: http://localhost:3001/health
 
+### Real Market Data (Alpaca)
+
+The API will automatically fall back to synthetic demo data unless Alpaca credentials are present. To enable real candles/tickers/order books:
+
+```bash
+# apps/api/.env (or root .env)
+ALPACA_API_KEY_ID=your_key
+ALPACA_API_SECRET_KEY=your_secret
+# Optional: use paper trading keys (recommended for dev)
+# APCA_API_KEY_ID=your_paper_key
+# APCA_API_SECRET_KEY=your_paper_secret
+# Optional: override base data URL (defaults to https://data.alpaca.markets)
+# ALPACA_DATA_URL=https://data.alpaca.markets
+# apps/web/.env.local
+# Uncomment to force mock market data on the frontend (useful with demo mode)
+# NEXT_PUBLIC_USE_MARKET_MOCKS=true
+```
+
+Credentials can be generated from the Alpaca dashboard (paper or live trading). The free plan provides sufficient data for MVP charts.
+
+> ⚠️ Without credentials the API still serves mock data, so the frontend remains functional.
+
 ## Troubleshooting
 
 ### Port Already in Use

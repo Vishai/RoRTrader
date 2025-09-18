@@ -3,7 +3,7 @@ import express from 'express';
 
 // Create a simple test app
 const app = express();
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),

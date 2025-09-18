@@ -108,7 +108,7 @@ Following the UI-First Development approach with integrated advanced technical a
 - [ ] **Backend endpoint implementation** ❌
   - [ ] /api/analysis/* endpoints
   - [ ] /api/strategies/* endpoints  
-  - [ ] /api/market/* endpoints
+  - [x] /api/market/* endpoints
   - [ ] WebSocket server configuration
 - [ ] **NEW: Create visual condition builder logic**
 - [ ] **NEW: Build strategy validation system**
@@ -138,7 +138,7 @@ Following the UI-First Development approach with integrated advanced technical a
   - [ ] Update bot model to include strategy
 
 ### 2.5 Real-time Features
-- [ ] Set up WebSocket connection
+- [x] Set up WebSocket connection
 - [ ] Implement live price updates
 - [ ] Add real-time trade notifications
 - [ ] Create activity stream updates

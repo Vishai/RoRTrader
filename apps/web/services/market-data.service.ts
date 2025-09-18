@@ -59,6 +59,30 @@ export class MarketDataService {
   private static maxReconnectAttempts = 5;
   private static reconnectDelay = 1000; // Start with 1 second
 
+  private static buildKey(
+    type: string,
+    symbol: string,
+    exchange: string,
+    timeframe?: string
+  ): string {
+    return timeframe ? `${type}:${symbol}:${exchange}:${timeframe}` : `${type}:${symbol}:${exchange}`;
+  }
+
+  private static parseKey(key: string): {
+    type: string;
+    symbol: string;
+    exchange: string;
+    timeframe?: string;
+  } {
+    const [type, symbol, exchange, timeframe] = key.split(':');
+    return {
+      type,
+      symbol,
+      exchange,
+      timeframe: timeframe || undefined,
+    };
+  }
+
   // Get historical candles
   static async getCandles(request: MarketDataRequest): Promise<MarketDataResponse> {
     return apiCall<MarketDataResponse>('get', '/api/market/candles', null, {
@@ -98,8 +122,8 @@ export class MarketDataService {
 
       // Resubscribe to all active subscriptions
       this.subscriptions.forEach((_, key) => {
-        const [type, symbol, exchange] = key.split(':');
-        this.sendSubscription(type, symbol, exchange);
+        const { type, symbol, exchange, timeframe } = this.parseKey(key);
+        this.sendSubscription(type, symbol, exchange, timeframe);
       });
     };
 
@@ -124,8 +148,8 @@ export class MarketDataService {
 
   // Handle incoming WebSocket messages
   private static handleMessage(data: any): void {
-    const { type, symbol, exchange, payload } = data;
-    const key = `${type}:${symbol}:${exchange}`;
+    const { type, symbol, exchange, timeframe, payload } = data;
+    const key = this.buildKey(type, symbol, exchange, timeframe);
     const handlers = this.subscriptions.get(key);
 
     if (handlers) {
@@ -151,7 +175,12 @@ export class MarketDataService {
   }
 
   // Send subscription message
-  private static sendSubscription(type: string, symbol: string, exchange: string): void {
+  private static sendSubscription(
+    type: string,
+    symbol: string,
+    exchange: string,
+    timeframe?: string
+  ): void {
     if (this.wsConnection?.readyState === WebSocket.OPEN) {
       this.wsConnection.send(
         JSON.stringify({
@@ -159,13 +188,19 @@ export class MarketDataService {
           type,
           symbol,
           exchange,
+          timeframe,
         })
       );
     }
   }
 
   // Send unsubscription message
-  private static sendUnsubscription(type: string, symbol: string, exchange: string): void {
+  private static sendUnsubscription(
+    type: string,
+    symbol: string,
+    exchange: string,
+    timeframe?: string
+  ): void {
     if (this.wsConnection?.readyState === WebSocket.OPEN) {
       this.wsConnection.send(
         JSON.stringify({
@@ -173,6 +208,7 @@ export class MarketDataService {
           type,
           symbol,
           exchange,
+          timeframe,
         })
       );
     }
@@ -186,7 +222,7 @@ export class MarketDataService {
   ): () => void {
     this.initializeWebSocket();
     
-    const key = `price:${symbol}:${exchange}`;
+    const key = this.buildKey('price', symbol, exchange);
     
     if (!this.subscriptions.has(key)) {
       this.subscriptions.set(key, new Set());
@@ -217,11 +253,11 @@ export class MarketDataService {
   ): () => void {
     this.initializeWebSocket();
     
-    const key = `candle:${symbol}:${exchange}:${timeframe}`;
+    const key = this.buildKey('candle', symbol, exchange, timeframe);
     
     if (!this.subscriptions.has(key)) {
       this.subscriptions.set(key, new Set());
-      this.sendSubscription('candle', symbol, exchange);
+      this.sendSubscription('candle', symbol, exchange, timeframe);
     }
 
     this.subscriptions.get(key)!.add(handler);
@@ -233,7 +269,7 @@ export class MarketDataService {
         handlers.delete(handler);
         if (handlers.size === 0) {
           this.subscriptions.delete(key);
-          this.sendUnsubscription('candle', symbol, exchange);
+          this.sendUnsubscription('candle', symbol, exchange, timeframe);
         }
       }
     };

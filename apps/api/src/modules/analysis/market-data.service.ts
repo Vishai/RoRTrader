@@ -6,7 +6,7 @@ import axios from 'axios';
 export interface MarketDataOptions {
   symbol: string;
   exchange: 'coinbase_pro' | 'alpaca' | 'demo';
-  timeframe: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d';
+  timeframe: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
   limit?: number;
   startTime?: number;
   endTime?: number;
@@ -14,14 +14,51 @@ export interface MarketDataOptions {
 
 export class MarketDataService {
   private readonly CACHE_TTL = 60; // 1 minute cache
+  private readonly alpacaKey = process.env.ALPACA_API_KEY_ID || process.env.APCA_API_KEY_ID || '';
+  private readonly alpacaSecret = process.env.ALPACA_API_SECRET_KEY || process.env.APCA_API_SECRET_KEY || '';
+  private readonly alpacaBaseUrl = process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets';
   
   constructor(private readonly redis: RedisService) {}
+
+  private hasAlpacaCredentials(): boolean {
+    return Boolean(this.alpacaKey && this.alpacaSecret);
+  }
+
+  private alpacaHeaders() {
+    return {
+      'APCA-API-KEY-ID': this.alpacaKey,
+      'APCA-API-SECRET-KEY': this.alpacaSecret
+    };
+  }
+
+  private mapAlpacaTimeframe(timeframe: MarketDataOptions['timeframe']): string {
+    const map: Record<MarketDataOptions['timeframe'], string> = {
+      '1m': '1Min',
+      '5m': '5Min',
+      '15m': '15Min',
+      '30m': '30Min',
+      '1h': '1Hour',
+      '4h': '4Hour',
+      '1d': '1Day',
+      '1w': '1Week'
+    };
+
+    return map[timeframe] || '1Hour';
+  }
 
   /**
    * Fetch candle data from exchange or cache
    */
   async getCandles(options: MarketDataOptions): Promise<CandleData[]> {
-    const cacheKey = `candles:${options.exchange}:${options.symbol}:${options.timeframe}:${options.limit || 100}`;
+    const cacheKey = [
+      'candles',
+      options.exchange,
+      options.symbol,
+      options.timeframe,
+      options.limit || 100,
+      options.startTime ? options.startTime : 'start',
+      options.endTime ? options.endTime : 'end'
+    ].join(':');
     
     try {
       // Check cache first
@@ -32,19 +69,32 @@ export class MarketDataService {
       }
       
       // Fetch based on exchange
+      const fetchTimeframe = options.timeframe === '1w' ? '1d' : options.timeframe;
       let candles: CandleData[];
-      
-      switch (options.exchange) {
-        case 'coinbase_pro':
-          candles = await this.fetchCoinbaseCandles(options);
-          break;
-        case 'alpaca':
-          candles = await this.fetchAlpacaCandles(options);
-          break;
-        case 'demo':
-        default:
-          candles = this.generateDemoCandles(options);
-          break;
+
+      if (options.exchange === 'demo') {
+        candles = this.generateDemoCandles(options);
+      } else {
+        const requestOptions = {
+          ...options,
+          timeframe: fetchTimeframe
+        } as MarketDataOptions;
+
+        switch (options.exchange) {
+          case 'coinbase_pro':
+            candles = await this.fetchCoinbaseCandles(requestOptions);
+            break;
+          case 'alpaca':
+            candles = await this.fetchAlpacaCandles(requestOptions);
+            break;
+          default:
+            candles = this.generateDemoCandles(requestOptions);
+            break;
+        }
+
+        if (options.timeframe === '1w') {
+          candles = this.aggregateCandles(candles, 7);
+        }
       }
       
       // Cache the result
@@ -102,10 +152,98 @@ export class MarketDataService {
    * Fetch candles from Alpaca
    */
   private async fetchAlpacaCandles(options: MarketDataOptions): Promise<CandleData[]> {
-    // This would require Alpaca API credentials
-    // For now, return demo data
-    logger.warn('Alpaca integration not yet implemented, returning demo data');
-    return this.generateDemoCandles(options);
+    if (!this.hasAlpacaCredentials()) {
+      logger.warn('Alpaca credentials missing, falling back to demo candles');
+      return this.generateDemoCandles(options);
+    }
+
+    try {
+      const timeframe = this.mapAlpacaTimeframe(options.timeframe);
+      const limit = options.limit || 100;
+      const params: Record<string, string | number> = {
+        timeframe,
+        limit
+      };
+
+      if (options.startTime) {
+        params.start = new Date(options.startTime).toISOString();
+      }
+      if (options.endTime) {
+        params.end = new Date(options.endTime).toISOString();
+      }
+
+      const url = `${this.alpacaBaseUrl}/v2/stocks/${encodeURIComponent(options.symbol)}/bars`;
+      const response = await axios.get(url, {
+        params,
+        headers: this.alpacaHeaders()
+      });
+
+      const bars = response.data?.bars || [];
+      if (!Array.isArray(bars) || bars.length === 0) {
+        logger.warn('Alpaca returned no bars, falling back to demo data', { symbol: options.symbol, timeframe });
+        return this.generateDemoCandles(options);
+      }
+
+      return bars.map((bar: any) => ({
+        time: new Date(bar.t).getTime(),
+        open: bar.o,
+        high: bar.h,
+        low: bar.l,
+        close: bar.c,
+        volume: bar.v
+      }));
+    } catch (error) {
+      logger.error('Error fetching Alpaca candles', error);
+      return this.generateDemoCandles(options);
+    }
+  }
+
+  private aggregateCandles(candles: CandleData[], groupSize: number): CandleData[] {
+    if (groupSize <= 1) {
+      return candles;
+    }
+
+    const aggregated: CandleData[] = [];
+
+    for (let i = 0; i < candles.length; i += groupSize) {
+      const batch = candles.slice(i, i + groupSize);
+      if (!batch.length) {
+        continue;
+      }
+
+      aggregated.push({
+        time: batch[0].time,
+        open: batch[0].open,
+        high: Math.max(...batch.map(c => c.high)),
+        low: Math.min(...batch.map(c => c.low)),
+        close: batch[batch.length - 1].close,
+        volume: batch.reduce((sum, c) => sum + c.volume, 0)
+      });
+    }
+
+    return aggregated;
+  }
+
+  getDemoStartingPrice(symbol: string): number {
+    const normalized = symbol.toUpperCase();
+
+    const basePrices: Record<string, number> = {
+      'BTC-USD': 50000,
+      'ETH-USD': 3000,
+      'AAPL': 150,
+      'GOOGL': 2800
+    };
+
+    if (basePrices[normalized]) {
+      return basePrices[normalized];
+    }
+
+    if (normalized.includes('BTC')) return 50000;
+    if (normalized.includes('ETH')) return 3000;
+    if (normalized.includes('AAPL')) return 150;
+    if (normalized.includes('GOOGL')) return 2800;
+
+    return 100;
   }
 
   /**
@@ -124,21 +262,13 @@ export class MarketDataService {
       '30m': 30 * 60 * 1000,
       '1h': 60 * 60 * 1000,
       '4h': 4 * 60 * 60 * 1000,
-      '1d': 24 * 60 * 60 * 1000
+      '1d': 24 * 60 * 60 * 1000,
+      '1w': 7 * 24 * 60 * 60 * 1000
     };
     
-    const interval = intervals[options.timeframe];
+    const interval = intervals[options.timeframe] || intervals['1h'];
     
-    // Base price for different symbols
-    const basePrices: Record<string, number> = {
-      'BTC-USD': 50000,
-      'ETH-USD': 3000,
-      'AAPL': 150,
-      'GOOGL': 2800,
-      'DEFAULT': 100
-    };
-    
-    let basePrice = basePrices[options.symbol] || basePrices.DEFAULT;
+    let basePrice = this.getDemoStartingPrice(options.symbol);
     
     // Generate candles
     for (let i = limit - 1; i >= 0; i--) {
@@ -256,6 +386,132 @@ export class MarketDataService {
       high,
       low,
       volume
+    };
+  }
+
+  async getOrderBook(
+    symbol: string,
+    exchange: 'coinbase_pro' | 'alpaca' | 'demo',
+    depth: number = 20
+  ): Promise<{
+    bids: Array<{ price: number; size: number }>;
+    asks: Array<{ price: number; size: number }>;
+    midpoint: number;
+  }> {
+    const cacheKey = `orderbook:${exchange}:${symbol}:${depth}`;
+
+    try {
+      if (exchange === 'alpaca' && this.hasAlpacaCredentials()) {
+        const quote = await this.fetchAlpacaLatestQuote(symbol);
+        if (quote) {
+          const orderBook = this.expandQuoteToOrderBook(quote, depth);
+          await this.redis.setex(cacheKey, 5, JSON.stringify(orderBook));
+          return orderBook;
+        }
+      }
+
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+
+      const currentPrice = await this.getCurrentPrice(symbol, exchange);
+      const midpoint = currentPrice || this.getDemoStartingPrice(symbol);
+      const synthetic = this.generateSyntheticOrderBook(midpoint, depth);
+
+      await this.redis.setex(cacheKey, 5, JSON.stringify(synthetic));
+      return synthetic;
+    } catch (error) {
+      logger.error('Error fetching order book:', error);
+      const fallbackPrice = this.getDemoStartingPrice(symbol);
+      return this.generateSyntheticOrderBook(fallbackPrice, depth);
+    }
+  }
+
+  private generateSyntheticOrderBook(midpoint: number, depth: number) {
+    const tickSize = midpoint * 0.001;
+    const bids: Array<{ price: number; size: number }> = [];
+    const asks: Array<{ price: number; size: number }> = [];
+
+    for (let i = 0; i < depth; i++) {
+      const baseSize = Math.random() * 3 + 0.5;
+      bids.push({
+        price: parseFloat((midpoint - tickSize * (i + 1)).toFixed(2)),
+        size: parseFloat(baseSize.toFixed(4))
+      });
+      asks.push({
+        price: parseFloat((midpoint + tickSize * (i + 1)).toFixed(2)),
+        size: parseFloat((baseSize * (0.8 + Math.random() * 0.4)).toFixed(4))
+      });
+    }
+
+    return {
+      bids,
+      asks,
+      midpoint: parseFloat(midpoint.toFixed(2))
+    };
+  }
+
+  private async fetchAlpacaLatestQuote(symbol: string): Promise<{
+    bidPrice: number;
+    bidSize: number;
+    askPrice: number;
+    askSize: number;
+    timestamp: string;
+  } | null> {
+    if (!this.hasAlpacaCredentials()) {
+      return null;
+    }
+
+    try {
+      const url = `${this.alpacaBaseUrl}/v2/stocks/${encodeURIComponent(symbol)}/quotes/latest`;
+      const response = await axios.get(url, {
+        headers: this.alpacaHeaders()
+      });
+
+      const quote = response.data?.quote;
+      if (!quote || (!quote.bp && !quote.ap)) {
+        return null;
+      }
+
+      return {
+        bidPrice: quote.bp || quote.ap,
+        bidSize: quote.bs || 1,
+        askPrice: quote.ap || quote.bp,
+        askSize: quote.as || 1,
+        timestamp: quote.t
+      };
+    } catch (error) {
+      logger.error('Error fetching Alpaca quote', error);
+      return null;
+    }
+  }
+
+  private expandQuoteToOrderBook(
+    quote: { bidPrice: number; bidSize: number; askPrice: number; askSize: number; timestamp: string },
+    depth: number
+  ) {
+    const midpoint = (quote.bidPrice + quote.askPrice) / 2;
+    const tickSize = midpoint * 0.0005;
+
+    const bids: Array<{ price: number; size: number }> = [];
+    const asks: Array<{ price: number; size: number }> = [];
+
+    for (let i = 0; i < depth; i++) {
+      bids.push({
+        price: parseFloat((quote.bidPrice - tickSize * i).toFixed(2)),
+        size: parseFloat((Math.max(quote.bidSize, 0.1) * (1 - i * 0.02)).toFixed(4))
+      });
+      asks.push({
+        price: parseFloat((quote.askPrice + tickSize * i).toFixed(2)),
+        size: parseFloat((Math.max(quote.askSize, 0.1) * (1 - i * 0.02)).toFixed(4))
+      });
+    }
+
+    return {
+      bids,
+      asks,
+      midpoint: parseFloat(midpoint.toFixed(2))
     };
   }
 }

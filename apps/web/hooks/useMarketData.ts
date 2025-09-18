@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   MarketDataService,
   MarketDataRequest,
@@ -9,13 +9,36 @@ import {
   OrderBook,
 } from '@/services/market-data.service';
 
+const USE_MOCK_MARKET_DATA =
+  typeof process !== 'undefined' && process.env.NEXT_PUBLIC_USE_MARKET_MOCKS === 'true';
+
+const DEFAULT_LIMIT = 300;
+
+const buildCandleQueryKey = (request: MarketDataRequest | null) => {
+  if (!request) {
+    return ['market-candles', 'inactive'];
+  }
+
+  return [
+    'market-candles',
+    request.symbol,
+    request.exchange,
+    request.timeframe,
+    request.limit ?? DEFAULT_LIMIT,
+    request.start ?? null,
+    request.end ?? null,
+  ];
+};
+
 // Hook to fetch historical candles
 export function useMarketCandles(
   request: MarketDataRequest | null,
   enabled: boolean = true
 ) {
+  const queryKey = useMemo(() => buildCandleQueryKey(request), [request]);
+
   return useQuery<MarketDataResponse, Error>({
-    queryKey: ['market-candles', request],
+    queryKey,
     queryFn: async () => {
       if (!request) throw new Error('No request provided');
       
@@ -23,7 +46,13 @@ export function useMarketCandles(
       try {
         return await MarketDataService.getCandles(request);
       } catch (error) {
-        console.warn('Using mock candles due to API error:', error);
+        if (!USE_MOCK_MARKET_DATA) {
+          throw error instanceof Error
+            ? error
+            : new Error('Failed to load market candles');
+        }
+
+        console.warn('Falling back to mock candles due to API error:', error);
         const mockCandles = MarketDataService.generateMockCandles(
           request.symbol,
           request.timeframe,
@@ -60,7 +89,29 @@ export function useTicker(
     queryKey: ['ticker', symbol, exchange],
     queryFn: () => {
       if (!symbol || !exchange) throw new Error('Symbol and exchange required');
-      return MarketDataService.getTicker(symbol, exchange);
+      return MarketDataService.getTicker(symbol, exchange).catch((error) => {
+        if (!USE_MOCK_MARKET_DATA) {
+          throw error instanceof Error ? error : new Error('Failed to load ticker');
+        }
+
+        console.warn('Falling back to mock ticker due to API error:', error);
+        const mockCandle = MarketDataService.generateMockCandles(symbol, '1m', 2).pop();
+        if (!mockCandle) {
+          throw new Error('Unable to generate mock ticker data');
+        }
+
+        return {
+          symbol,
+          exchange,
+          price: mockCandle.close,
+          change24h: 0,
+          changePercent24h: 0,
+          volume24h: mockCandle.volume,
+          high24h: mockCandle.high,
+          low24h: mockCandle.low,
+          timestamp: new Date(mockCandle.time * 1000).toISOString(),
+        } satisfies TickerData;
+      });
     },
     enabled: enabled && !!symbol && !!exchange,
     staleTime: 5 * 1000, // 5 seconds
@@ -80,7 +131,30 @@ export function useOrderBook(
     queryKey: ['orderbook', symbol, exchange, depth],
     queryFn: () => {
       if (!symbol || !exchange) throw new Error('Symbol and exchange required');
-      return MarketDataService.getOrderBook(symbol, exchange, depth);
+      return MarketDataService.getOrderBook(symbol, exchange, depth).catch((error) => {
+        if (!USE_MOCK_MARKET_DATA) {
+          throw error instanceof Error ? error : new Error('Failed to load order book');
+        }
+
+        console.warn('Falling back to mock order book due to API error:', error);
+        const midpoint = MarketDataService.generateMockCandles(symbol, '1m', 1)[0]?.close ?? 0;
+        const bids = Array.from({ length: depth }, (_, idx) => ({
+          price: parseFloat((midpoint * (1 - 0.001 * (idx + 1))).toFixed(2)),
+          size: parseFloat((Math.random() * 2 + 0.5).toFixed(4)),
+        }));
+        const asks = Array.from({ length: depth }, (_, idx) => ({
+          price: parseFloat((midpoint * (1 + 0.001 * (idx + 1))).toFixed(2)),
+          size: parseFloat((Math.random() * 2 + 0.5).toFixed(4)),
+        }));
+
+        return {
+          symbol,
+          exchange,
+          bids,
+          asks,
+          timestamp: new Date().toISOString(),
+        } satisfies OrderBook;
+      });
     },
     enabled: enabled && !!symbol && !!exchange,
     staleTime: 1 * 1000, // 1 second
@@ -100,7 +174,7 @@ export function useLivePrices(
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!enabled || !symbol || !exchange) {
+    if (!enabled || !symbol || !exchange || USE_MOCK_MARKET_DATA) {
       return;
     }
 
@@ -156,7 +230,8 @@ export function useLiveCandles(
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!enabled || !symbol || !exchange || !timeframe) {
+    if (!enabled || !symbol || !exchange || !timeframe || USE_MOCK_MARKET_DATA) {
+      setIsConnected(false);
       return;
     }
 
@@ -177,7 +252,11 @@ export function useLiveCandles(
 
           // Update cache with new candle
           queryClient.setQueryData<MarketDataResponse>(
-            ['market-candles', { symbol, exchange, timeframe }],
+            buildCandleQueryKey(
+              symbol && exchange && timeframe
+                ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
+                : null
+            ),
             (old) => {
               if (!old) return old;
               
@@ -252,7 +331,7 @@ export function useChartData(
   // Fetch historical data
   const { data: historicalData, isLoading, error } = useMarketCandles(
     symbol && exchange && timeframe
-      ? { symbol, exchange, timeframe, limit: 300 }
+      ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
       : null,
     enabled
   );
