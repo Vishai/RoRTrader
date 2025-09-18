@@ -1,11 +1,12 @@
-/** @type {import('jest').Config} */
-const config = {
+import type { Config } from 'jest';
+
+const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/*.spec.ts'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json', diagnostics: false }],
+    '^.+\\.ts$': 'ts-jest',
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -31,4 +32,4 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
 };
 
-module.exports = config;
+export default config;

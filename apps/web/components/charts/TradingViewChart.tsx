@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, LineData } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, CandlestickData, LineData } from 'lightweight-charts';
 import { useChartData } from '@/hooks/useMarketData';
 import { useChartIndicators } from '@/hooks/useIndicators';
 import { Candle } from '@/services/market-data.service';
@@ -75,104 +75,118 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current || chartData.length === 0) return;
 
-    // Create chart
-    const chart = createChart(chartContainerRef.current, {
-      width: width || chartContainerRef.current.clientWidth,
-      height,
-      layout: {
-        background: { type: ColorType.Solid, color: '#1C1C1F' },
-        textColor: '#B8B8BD',
-      },
-      grid: {
-        vertLines: { color: '#2A2A30' },
-        horzLines: { color: '#2A2A30' },
-      },
-      crosshair: {
-        mode: 0,
-        vertLine: {
-          color: '#00D4FF',
-          labelBackgroundColor: '#00D4FF',
+    let isCancelled = false;
+    let resizeListener: (() => void) | null = null;
+
+    const createLightweightChart = async () => {
+      const { createChart, ColorType } = await import('lightweight-charts');
+
+      if (!chartContainerRef.current || chartData.length === 0 || isCancelled) {
+        return;
+      }
+
+      const chart = createChart(chartContainerRef.current, {
+        width: width || chartContainerRef.current.clientWidth,
+        height,
+        layout: {
+          background: { type: ColorType.Solid, color: '#1C1C1F' },
+          textColor: '#B8B8BD',
         },
-        horzLine: {
-          color: '#00D4FF',
-          labelBackgroundColor: '#00D4FF',
+        grid: {
+          vertLines: { color: '#2A2A30' },
+          horzLines: { color: '#2A2A30' },
         },
-      },
-      rightPriceScale: {
-        borderColor: '#2A2A30',
+        crosshair: {
+          mode: 0,
+          vertLine: {
+            color: '#00D4FF',
+            labelBackgroundColor: '#00D4FF',
+          },
+          horzLine: {
+            color: '#00D4FF',
+            labelBackgroundColor: '#00D4FF',
+          },
+        },
+        rightPriceScale: {
+          borderColor: '#2A2A30',
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.2,
+          },
+        },
+        timeScale: {
+          borderColor: '#2A2A30',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
+
+      const mainSeries = chart.addCandlestickSeries({
+        upColor: '#00FF88',
+        downColor: '#FF3366',
+        borderVisible: false,
+        wickUpColor: '#00FF88',
+        wickDownColor: '#FF3366',
+      });
+
+      const volumeSeries = chart.addHistogramSeries({
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: 'volume',
+      });
+
+      chart.priceScale('volume').applyOptions({
         scaleMargins: {
-          top: 0.1,
-          bottom: 0.2,
+          top: 0.8,
+          bottom: 0,
         },
-      },
-      timeScale: {
-        borderColor: '#2A2A30',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
+      });
 
-    // Add candlestick series
-    const mainSeries = chart.addCandlestickSeries({
-      upColor: '#00FF88',
-      downColor: '#FF3366',
-      borderVisible: false,
-      wickUpColor: '#00FF88',
-      wickDownColor: '#FF3366',
-    });
+      mainSeries.setData(chartData);
+      volumeSeries.setData(volumeData);
 
-    // Add volume series
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: 'volume',
-    });
-
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-
-    mainSeries.setData(chartData);
-    volumeSeries.setData(volumeData);
-
-    // Handle crosshair move
-    chart.subscribeCrosshairMove((param) => {
-      if (onCandleHover) {
-        if (param.time && param.seriesPrices.has(mainSeries)) {
-          const data = param.seriesPrices.get(mainSeries) as CandlestickData;
-          onCandleHover(data);
-        } else {
-          onCandleHover(null);
+      chart.subscribeCrosshairMove((param) => {
+        if (onCandleHover) {
+          if (param.time && param.seriesPrices.has(mainSeries)) {
+            const data = param.seriesPrices.get(mainSeries) as CandlestickData;
+            onCandleHover(data);
+          } else {
+            onCandleHover(null);
+          }
         }
-      }
-    });
+      });
 
-    // Fit content
-    chart.timeScale().fitContent();
+      chart.timeScale().fitContent();
 
-    // Store references
-    chartRef.current = chart;
-    mainSeriesRef.current = mainSeries;
-    volumeSeriesRef.current = volumeSeries;
+      chartRef.current = chart;
+      mainSeriesRef.current = mainSeries;
+      volumeSeriesRef.current = volumeSeries;
 
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chart) {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
+      resizeListener = () => {
+        if (chartContainerRef.current && chartRef.current) {
+          chartRef.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+          });
+        }
+      };
+
+      window.addEventListener('resize', resizeListener);
     };
 
-    window.addEventListener('resize', handleResize);
+    createLightweightChart();
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
+      isCancelled = true;
+      if (resizeListener) {
+        window.removeEventListener('resize', resizeListener);
+      }
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+      mainSeriesRef.current = null;
+      volumeSeriesRef.current = null;
     };
   }, [chartData.length, height, width]);
 

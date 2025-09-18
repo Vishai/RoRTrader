@@ -1,25 +1,82 @@
 import { Request, Response, NextFunction } from 'express';
 import { TechnicalAnalysisService } from './technical-analysis.service';
-import { validate } from '@/shared/middleware/validation.middleware';
-import { calculateIndicatorSchema, batchIndicatorSchema } from './analysis.validation';
+import { MarketDataService } from './market-data.service';
+import { validate, ValidationError } from '@/shared/middleware/validation.middleware';
+import {
+  calculateIndicatorSchema,
+  batchIndicatorSchema,
+  type CalculateIndicatorPayload,
+  type BatchIndicatorPayload
+} from './analysis.validation';
 import { asyncHandler } from '@/shared/utils/async-handler';
 
 export class AnalysisController {
-  constructor(private readonly analysisService: TechnicalAnalysisService) {}
+  constructor(
+    private readonly analysisService: TechnicalAnalysisService,
+    private readonly marketDataService: MarketDataService
+  ) {}
+
+  private normalizeIndicatorName(indicator: string): string {
+    return indicator.trim().toUpperCase();
+  }
+
+  private normalizeExchange(exchange: string | undefined): 'coinbase_pro' | 'alpaca' | 'demo' {
+    switch ((exchange || 'demo').toLowerCase()) {
+      case 'coinbase':
+      case 'coinbase_pro':
+        return 'coinbase_pro';
+      case 'alpaca':
+        return 'alpaca';
+      default:
+        return 'demo';
+    }
+  }
+
+  private normalizeTimeframe(timeframe: string | undefined): '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w' {
+    const valid: Array<'1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w'> = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'];
+    if (!timeframe) return '1h';
+    const match = valid.find(tf => tf === timeframe);
+    return match || '1h';
+  }
 
   /**
    * Calculate a single indicator
    * POST /api/analysis/indicator
    */
   async calculateIndicator(req: Request, res: Response, next: NextFunction) {
+    let payload: CalculateIndicatorPayload;
+    try {
+      payload = validate<CalculateIndicatorPayload>(calculateIndicatorSchema, req.body);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({
+          success: false,
+          error: error.message,
+          details: error.details
+        });
+        return;
+      }
+      throw error;
+    }
+
     return asyncHandler(async () => {
-      const { symbol, indicator, params, candles } = validate(calculateIndicatorSchema, req.body);
+      const { symbol, indicator, params, candles, timeframe, exchange, limit } = payload;
+
+      const normalizedExchange = this.normalizeExchange(exchange);
+      const normalizedTimeframe = this.normalizeTimeframe(timeframe);
+      const resolvedCandles = candles ??
+        (await this.marketDataService.getCandles({
+          symbol,
+          exchange: normalizedExchange,
+          timeframe: normalizedTimeframe,
+          limit
+        }));
       
       const result = await this.analysisService.calculateIndicators({
         symbol,
-        indicator,
+        indicator: this.normalizeIndicatorName(indicator),
         params,
-        candles
+        candles: resolvedCandles
       });
       
       res.json({
@@ -34,24 +91,59 @@ export class AnalysisController {
    * POST /api/analysis/batch
    */
   async calculateBatchIndicators(req: Request, res: Response, next: NextFunction) {
+    let payload: BatchIndicatorPayload;
+    try {
+      payload = validate<BatchIndicatorPayload>(batchIndicatorSchema, req.body);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({
+          success: false,
+          error: error.message,
+          details: error.details
+        });
+        return;
+      }
+      throw error;
+    }
+
     return asyncHandler(async () => {
-      const { symbol, indicators, candles } = validate(batchIndicatorSchema, req.body);
+      const {
+        symbol,
+        indicators,
+        candles,
+        timeframe,
+        exchange,
+        limit,
+        bars
+      } = payload;
+
+      const normalizedExchange = this.normalizeExchange(exchange);
+      const normalizedTimeframe = this.normalizeTimeframe(timeframe);
+      const candleLimit = bars ?? limit;
+
+      const resolvedCandles = candles ??
+        (await this.marketDataService.getCandles({
+          symbol,
+          exchange: normalizedExchange,
+          timeframe: normalizedTimeframe,
+          limit: candleLimit
+        }));
       
       const results = await Promise.all(
         indicators.map(ind => 
           this.analysisService.calculateIndicators({
             symbol,
-            indicator: ind.name,
+            indicator: this.normalizeIndicatorName(ind.indicator),
             params: ind.params || {},
-            candles
+            candles: resolvedCandles
           })
         )
       );
       
       // Calculate overall market sentiment
-      const signals = results.map(r => r.signal);
-      const bullishCount = signals.filter(s => s === 'bullish').length;
-      const bearishCount = signals.filter(s => s === 'bearish').length;
+      const signals = results.map(result => result.signal ?? 'neutral');
+      const bullishCount = signals.filter(signal => signal === 'bullish').length;
+      const bearishCount = signals.filter(signal => signal === 'bearish').length;
       
       let overallSentiment: 'bullish' | 'bearish' | 'neutral' = 'neutral';
       if (bullishCount > bearishCount * 1.5) {
@@ -68,8 +160,9 @@ export class AnalysisController {
             overall: overallSentiment,
             bullish: bullishCount,
             bearish: bearishCount,
-            neutral: signals.filter(s => s === 'neutral').length
-          }
+            neutral: signals.filter(signal => signal === 'neutral').length
+          },
+          timestamp: new Date().toISOString()
         }
       });
     })(req, res, next);
@@ -79,7 +172,7 @@ export class AnalysisController {
    * Get supported indicators and their parameters
    * GET /api/analysis/indicators
    */
-  async getSupportedIndicators(req: Request, res: Response) {
+  async getSupportedIndicators(_req: Request, res: Response) {
     const indicators = [
       {
         name: 'SMA',

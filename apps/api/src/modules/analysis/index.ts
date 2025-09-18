@@ -8,7 +8,7 @@ import { RedisService } from '@/shared/services/redis.service';
 const redisService = new RedisService();
 const technicalAnalysisService = new TechnicalAnalysisService(redisService);
 const marketDataService = new MarketDataService(redisService);
-const analysisController = new AnalysisController(technicalAnalysisService);
+const analysisController = new AnalysisController(technicalAnalysisService, marketDataService);
 
 // Create router
 const router = Router();

@@ -14,9 +14,17 @@ export interface MarketDataOptions {
 
 export class MarketDataService {
   private readonly CACHE_TTL = 60; // 1 minute cache
-  private readonly alpacaKey = process.env.ALPACA_API_KEY_ID || process.env.APCA_API_KEY_ID || '';
-  private readonly alpacaSecret = process.env.ALPACA_API_SECRET_KEY || process.env.APCA_API_SECRET_KEY || '';
-  private readonly alpacaBaseUrl = process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets';
+  private get alpacaKey(): string {
+    return process.env.ALPACA_API_KEY || process.env.ALPACA_API_KEY_ID || process.env.APCA_API_KEY_ID || '';
+  }
+
+  private get alpacaSecret(): string {
+    return process.env.ALPACA_API_SECRET || process.env.ALPACA_API_SECRET_KEY || process.env.APCA_API_SECRET_KEY || '';
+  }
+
+  private get alpacaBaseUrl(): string {
+    return process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets';
+  }
   
   constructor(private readonly redis: RedisService) {}
 
@@ -59,7 +67,8 @@ export class MarketDataService {
       options.startTime ? options.startTime : 'start',
       options.endTime ? options.endTime : 'end'
     ].join(':');
-    
+
+
     try {
       // Check cache first
       const cached = await this.redis.get(cacheKey);
@@ -102,8 +111,8 @@ export class MarketDataService {
       
       return candles;
       
-    } catch (error) {
-      logger.error('Error fetching candles:', error);
+    } catch (error: any) {
+      logger.error('Error fetching candles:', error.message || error);
       // Fallback to demo data on error
       return this.generateDemoCandles(options);
     }
@@ -157,6 +166,7 @@ export class MarketDataService {
       return this.generateDemoCandles(options);
     }
 
+
     try {
       const timeframe = this.mapAlpacaTimeframe(options.timeframe);
       const limit = options.limit || 100;
@@ -173,16 +183,28 @@ export class MarketDataService {
       }
 
       const url = `${this.alpacaBaseUrl}/v2/stocks/${encodeURIComponent(options.symbol)}/bars`;
-      const response = await axios.get(url, {
-        params,
+
+      logger.debug(`Alpaca request URL: ${url}`, { params });
+
+      const client = axios.create({
+        baseURL: this.alpacaBaseUrl,
         headers: this.alpacaHeaders()
       });
 
-      const bars = response.data?.bars || [];
+      const response = await client.get(`/v2/stocks/${encodeURIComponent(options.symbol)}/bars`, {
+        params
+      });
+
+
+      // Alpaca returns bars in a bars object with the symbol as key
+      const bars = response.data?.bars?.[options.symbol] || response.data?.bars || [];
+
       if (!Array.isArray(bars) || bars.length === 0) {
         logger.warn('Alpaca returned no bars, falling back to demo data', { symbol: options.symbol, timeframe });
         return this.generateDemoCandles(options);
       }
+
+      logger.info(`Successfully fetched ${bars.length} bars from Alpaca for ${options.symbol}`);
 
       return bars.map((bar: any) => ({
         time: new Date(bar.t).getTime(),
@@ -192,8 +214,11 @@ export class MarketDataService {
         close: bar.c,
         volume: bar.v
       }));
-    } catch (error) {
-      logger.error('Error fetching Alpaca candles', error);
+    } catch (error: any) {
+      logger.error(`Error fetching Alpaca candles: ${error.message}`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
       return this.generateDemoCandles(options);
     }
   }

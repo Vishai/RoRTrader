@@ -169,5 +169,22 @@ describe('TechnicalAnalysisService', () => {
       
       expect(result.signal).toBe('bullish'); // Oversold = bullish signal
     });
+
+    it('should gracefully handle Redis outages and still compute results', async () => {
+      mockRedis.get.mockRejectedValue(new Error('Redis connection refused'));
+      mockRedis.setex.mockRejectedValue(new Error('Redis connection refused'));
+
+      const input = {
+        symbol: 'AAPL',
+        indicator: 'EMA',
+        params: { period: 10 },
+        candles: sampleCandles
+      };
+
+      await expect(service.calculateIndicators(input)).resolves.toMatchObject({
+        indicator: 'EMA',
+        symbol: 'AAPL'
+      });
+    });
   });
 });

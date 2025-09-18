@@ -35,6 +35,7 @@ export default [
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-unsafe-function-type": "off",
       "@typescript-eslint/no-namespace": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
       "no-useless-escape": "warn",
       "no-case-declarations": "off",
     },

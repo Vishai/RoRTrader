@@ -1,4 +1,28 @@
 import Joi from 'joi';
+import type { CandleData } from './technical-analysis.service';
+
+export interface CalculateIndicatorPayload {
+  symbol: string;
+  indicator: string;
+  timeframe?: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
+  exchange?: 'coinbase' | 'coinbase_pro' | 'alpaca' | 'demo';
+  limit?: number;
+  params: Record<string, any>;
+  candles?: CandleData[];
+}
+
+export interface BatchIndicatorPayload {
+  symbol: string;
+  timeframe?: '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
+  exchange?: 'coinbase' | 'coinbase_pro' | 'alpaca' | 'demo';
+  limit?: number;
+  bars?: number;
+  indicators: Array<{
+    indicator: string;
+    params?: Record<string, any>;
+  }>;
+  candles?: CandleData[];
+}
 
 // Candle data schema
 const candleSchema = Joi.object({
@@ -10,36 +34,47 @@ const candleSchema = Joi.object({
   volume: Joi.number().min(0).required()
 });
 
+const timeframeSchema = Joi.string()
+  .valid('1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w')
+  .default('1h');
+
+const exchangeSchema = Joi.string()
+  .valid('coinbase', 'coinbase_pro', 'alpaca', 'demo')
+  .default('demo');
+
+const indicatorParamsSchema = Joi.object({
+  period: Joi.number().min(5).max(200),
+  fastPeriod: Joi.number().min(5).max(50),
+  slowPeriod: Joi.number().min(10).max(100),
+  signalPeriod: Joi.number().min(5).max(50),
+  stdDev: Joi.number().min(1).max(3)
+}).optional();
+
 // Single indicator calculation schema
 export const calculateIndicatorSchema = Joi.object({
   symbol: Joi.string().required().min(1).max(20),
-  indicator: Joi.string().required().valid('SMA', 'EMA', 'RSI', 'MACD', 'BOLLINGER'),
-  params: Joi.object({
-    period: Joi.number().min(5).max(200),
-    fastPeriod: Joi.number().min(5).max(50),
-    slowPeriod: Joi.number().min(10).max(100),
-    signalPeriod: Joi.number().min(5).max(50),
-    stdDev: Joi.number().min(1).max(3)
-  }).default({}),
-  candles: Joi.array().items(candleSchema).min(50).max(1000).required()
+  indicator: Joi.string().required().min(1).max(50),
+  timeframe: timeframeSchema,
+  exchange: exchangeSchema,
+  limit: Joi.number().integer().min(50).max(1000).default(300),
+  params: indicatorParamsSchema.default({}),
+  candles: Joi.array().items(candleSchema).min(50).max(1000)
 });
 
 // Batch indicator calculation schema
 export const batchIndicatorSchema = Joi.object({
   symbol: Joi.string().required().min(1).max(20),
+  timeframe: timeframeSchema,
+  exchange: exchangeSchema,
+  limit: Joi.number().integer().min(50).max(1000).default(300),
+  bars: Joi.number().integer().min(50).max(1000).default(300),
   indicators: Joi.array().items(
     Joi.object({
-      name: Joi.string().required().valid('SMA', 'EMA', 'RSI', 'MACD', 'BOLLINGER'),
-      params: Joi.object({
-        period: Joi.number().min(5).max(200),
-        fastPeriod: Joi.number().min(5).max(50),
-        slowPeriod: Joi.number().min(10).max(100),
-        signalPeriod: Joi.number().min(5).max(50),
-        stdDev: Joi.number().min(1).max(3)
-      }).optional()
+      indicator: Joi.string().required().min(1).max(50),
+      params: indicatorParamsSchema
     })
   ).min(1).max(10).required(),
-  candles: Joi.array().items(candleSchema).min(50).max(1000).required()
+  candles: Joi.array().items(candleSchema).min(50).max(1000)
 });
 
 // Strategy condition schema (for future use)

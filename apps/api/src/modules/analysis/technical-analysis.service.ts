@@ -188,18 +188,32 @@ export class TechnicalAnalysisService {
    */
   async calculateIndicators(input: IndicatorInput): Promise<IndicatorResult> {
     const cacheKey = `ta:${input.symbol}:${input.indicator}:${JSON.stringify(input.params)}`;
-    
+
+    // Check cache first, but fall back gracefully if Redis is unavailable
     try {
-      // Check cache first
       const cached = await this.redis.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached);
+        try {
+          return JSON.parse(cached);
+        } catch (error) {
+          logger.warn('Failed to parse cached indicator payload, recalculating', {
+            cacheKey,
+            error: (error as Error).message
+          });
+        }
       }
-      
+    } catch (error) {
+      logger.warn('Redis unavailable when reading indicator cache, proceeding without cache', {
+        cacheKey,
+        error: (error as Error).message
+      });
+    }
+
+    try {
       let values: any;
       let signal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
       let strength = 50;
-      
+
       // Calculate based on indicator type
       switch (input.indicator.toUpperCase()) {
         case 'SMA':
@@ -251,12 +265,19 @@ export class TechnicalAnalysisService {
         signal,
         strength
       };
-      
-      // Cache for 1 minute
-      await this.redis.setex(cacheKey, 60, JSON.stringify(result));
-      
+
+      // Cache for 1 minute, but do not fail if Redis is down
+      try {
+        await this.redis.setex(cacheKey, 60, JSON.stringify(result));
+      } catch (cacheError) {
+        logger.warn('Redis unavailable when writing indicator cache, continuing without cache', {
+          cacheKey,
+          error: (cacheError as Error).message
+        });
+      }
+
       return result;
-      
+
     } catch (error) {
       logger.error('Error calculating indicator:', error);
       throw error;
