@@ -62,10 +62,13 @@ export default function HomePage() {
             </p>
             
             <div className="flex items-center justify-center gap-4 mb-12">
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 size="lg"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => {
+                  console.log('Navigating to dashboard...');
+                  router.push('/dashboard');
+                }}
               >
                 View Demo Dashboard
                 <ArrowRight className="ml-2 h-5 w-5" />

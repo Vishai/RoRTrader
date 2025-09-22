@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { TradingViewChart } from '@/components/charts';
-import { IndicatorPalette, IndicatorCard } from '@/components/indicators';
+import { ChartContainer } from '@/components/charts/TradingView';
+import { IndicatorPalette } from '@/components/indicators';
 import { StrategyPerformanceWidget, IndicatorStatusCards } from '@/components/strategy';
 import { 
   StrategyBuilderCanvas, 
@@ -10,7 +10,7 @@ import {
   BacktestingPreviewPanel 
 } from '@/components/strategy-builder';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { TickerSearch } from '@/components/ui/TickerSearch';
 import { useIndicators } from '@/hooks/useIndicators';
 import { useStrategyTemplates } from '@/hooks/useStrategy';
 import { Loader2 } from 'lucide-react';
@@ -21,16 +21,8 @@ export default function StrategyDemoPage() {
   const [strategyNodes, setStrategyNodes] = useState<any[]>([]);
   const [selectedBot] = useState('demo-bot-1');
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
-  const [customSymbol, setCustomSymbol] = useState('');
   const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
   const [customTimeframe, setCustomTimeframe] = useState('');
-
-  // Popular stock symbols
-  const popularSymbols = [
-    'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA',
-    'META', 'NVDA', 'JPM', 'V', 'WMT',
-    'JNJ', 'PG', 'MA', 'HD', 'DIS'
-  ];
 
   // Available timeframes organized by category
   const timeframeCategories = {
@@ -130,29 +122,16 @@ export default function StrategyDemoPage() {
         {selectedTab === 'overview' && (
           <div className="space-y-8">
             {/* Trading Chart with Real Data */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-text-primary">
-                  Live Chart - {selectedSymbol}
-                </h2>
-                <span className="text-sm text-text-secondary">
-                  Alpaca Market Data
-                </span>
-              </div>
-              <TradingViewChart
-                symbol={selectedSymbol}
-                exchange="alpaca"
-                timeframe={selectedTimeframe as any}
-                height={500}
-                enableLive={true}
-                indicators={[
-                  { id: 'sma', name: 'SMA', parameters: { period: 20 }, color: '#FFB800' },
-                  { id: 'sma', name: 'SMA', parameters: { period: 50 }, color: '#9945FF' },
-                  { id: 'ema', name: 'EMA', parameters: { period: 12 }, color: '#00D4FF' },
-                  { id: 'ema', name: 'EMA', parameters: { period: 26 }, color: '#00FF88' },
-                ]}
-              />
-            </Card>
+            <ChartContainer
+              initialSymbol={selectedSymbol}
+              initialTimeframe={selectedTimeframe}
+              exchange="alpaca"
+              height={500}
+              showControls={true}
+              showIndicators={true}
+              onSymbolChange={setSelectedSymbol}
+              className="mb-8"
+            />
 
             {/* Live Indicator Status Cards */}
             <div>
@@ -164,34 +143,13 @@ export default function StrategyDemoPage() {
                   {/* Symbol Selector */}
                   <div className="flex items-center gap-2">
                     <label className="text-sm text-text-secondary">Symbol:</label>
-                    <select
-                      value={selectedSymbol}
-                      onChange={(e) => setSelectedSymbol(e.target.value)}
-                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
-                    >
-                      <optgroup label="Popular Stocks">
-                        {popularSymbols.map(symbol => (
-                          <option key={symbol} value={symbol}>{symbol}</option>
-                        ))}
-                      </optgroup>
-                      {customSymbol && (
-                        <optgroup label="Custom">
-                          <option value={customSymbol}>{customSymbol}</option>
-                        </optgroup>
-                      )}
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Custom ticker"
-                      value={customSymbol}
-                      onChange={(e) => setCustomSymbol(e.target.value.toUpperCase())}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && customSymbol) {
-                          setSelectedSymbol(customSymbol);
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-background-elevated border border-border-default rounded-md text-text-primary text-sm placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary w-24"
-                    />
+                    <div className="w-64">
+                      <TickerSearch
+                        value={selectedSymbol}
+                        onChange={setSelectedSymbol}
+                        placeholder="Search for a ticker..."
+                      />
+                    </div>
                   </div>
 
                   {/* Timeframe Selector */}
@@ -388,14 +346,16 @@ export default function StrategyDemoPage() {
               <h2 className="text-xl font-semibold text-text-primary mb-4">
                 Equity Curve
               </h2>
-              <Card className="p-6 h-[400px] flex items-center justify-center">
+                <Card className="p-6 h-[400px] flex items-center justify-center">
                 {showBacktestResult ? (
-                  <TradingViewChart
-                    symbol="EQUITY"
-                    exchange="coinbase"
-                    timeframe="1d"
-                    height={350}
-                    enableLive={false}
+                  <ChartContainer
+                    initialSymbol={selectedSymbol}
+                    initialTimeframe="1d"
+                    exchange="alpaca"
+                    height={320}
+                    showControls={false}
+                    showIndicators={false}
+                    className="border-none shadow-none bg-transparent"
                   />
                 ) : (
                   <p className="text-text-tertiary">

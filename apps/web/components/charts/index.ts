@@ -1,2 +1,4 @@
-export { TradingViewChart } from './TradingViewChart';
-export { default as TradingViewChartDefault } from './TradingViewChart';
+export { default as TradingViewChart } from './TradingView/Chart';
+export { default as ChartContainer } from './TradingView/ChartContainer';
+export * from './TradingView/ChartTypes';
+export * from './TradingView/ChartUtils';

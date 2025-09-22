@@ -288,7 +288,7 @@ export const StrategyBuilderCanvas: React.FC<StrategyBuilderCanvasProps> = ({
           variant="primary"
           size="sm"
           onClick={handleSave}
-          disabled={createStrategy.isLoading || updateExistingStrategy.isLoading}
+          disabled={createStrategy.isPending || updateExistingStrategy.isPending}
         >
           <Save className="w-4 h-4 mr-1" />
           Save Strategy

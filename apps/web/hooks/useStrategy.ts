@@ -16,7 +16,7 @@ export function useStrategyTemplates() {
     queryKey: ['strategy-templates'],
     queryFn: () => StrategyService.getTemplates(),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 }
 
@@ -30,7 +30,7 @@ export function useStrategyTemplate(templateId: string | null) {
     },
     enabled: !!templateId,
     staleTime: 10 * 60 * 1000,
-    cacheTime: 30 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 }
 
@@ -44,7 +44,7 @@ export function useBotStrategy(botId: string | null) {
     },
     enabled: !!botId,
     staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -108,7 +108,7 @@ export function useStrategyEvaluation(
     },
     enabled: enabled && !!request,
     staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

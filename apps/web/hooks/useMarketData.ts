@@ -14,6 +14,24 @@ const USE_MOCK_MARKET_DATA =
 
 const DEFAULT_LIMIT = 300;
 
+type SupportedExchange = MarketDataRequest['exchange'];
+type SupportedTimeframe = MarketDataRequest['timeframe'];
+
+const SUPPORTED_TIMEFRAMES: readonly SupportedTimeframe[] = [
+  '1m',
+  '5m',
+  '15m',
+  '30m',
+  '1h',
+  '4h',
+  '1d',
+  '1w',
+];
+
+const isSupportedTimeframe = (value: string | null): value is SupportedTimeframe => {
+  return !!value && (SUPPORTED_TIMEFRAMES as readonly string[]).includes(value);
+};
+
 const buildCandleQueryKey = (request: MarketDataRequest | null) => {
   if (!request) {
     return ['market-candles', 'inactive'];
@@ -37,15 +55,21 @@ export function useMarketCandles(
 ) {
   const queryKey = useMemo(() => buildCandleQueryKey(request), [request]);
 
-  return useQuery<MarketDataResponse, Error>({
+  const query = useQuery<MarketDataResponse, Error>({
     queryKey,
     queryFn: async () => {
       if (!request) throw new Error('No request provided');
-      
+
+      console.log('[useMarketCandles] Fetching candles:', request);
+
       // If backend is not available, use mock data
       try {
-        return await MarketDataService.getCandles(request);
+        const response = await MarketDataService.getCandles(request);
+        console.log('[useMarketCandles] Success:', response);
+        return response;
       } catch (error) {
+        console.error('[useMarketCandles] API Error:', error);
+
         if (!USE_MOCK_MARKET_DATA) {
           throw error instanceof Error
             ? error
@@ -58,7 +82,7 @@ export function useMarketCandles(
           request.timeframe,
           request.limit || 100
         );
-        
+
         return {
           symbol: request.symbol,
           exchange: request.exchange,
@@ -77,15 +101,31 @@ export function useMarketCandles(
     },
     enabled: enabled && !!request,
     staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[useMarketCandles] Query state:', {
+      isLoading: query.isLoading,
+      isFetching: query.isFetching,
+      isError: query.isError,
+      error: query.error?.message,
+      dataExists: !!query.data,
+      queryKey,
+      enabled: enabled && !!request,
+      request
+    });
+  }, [query.isLoading, query.isFetching, query.isError, query.error, query.data, queryKey, enabled, request]);
+
+  return query;
 }
 
 // Hook to fetch ticker data
 export function useTicker(
   symbol: string | null,
-  exchange: string | null,
+  exchange: SupportedExchange | null,
   enabled: boolean = true
 ) {
   return useQuery<TickerData, Error>({
@@ -118,7 +158,7 @@ export function useTicker(
     },
     enabled: enabled && !!symbol && !!exchange,
     staleTime: 5 * 1000, // 5 seconds
-    cacheTime: 30 * 1000, // 30 seconds
+    gcTime: 30 * 1000, // 30 seconds
     refetchInterval: 5000, // Refetch every 5 seconds
   });
 }
@@ -126,7 +166,7 @@ export function useTicker(
 // Hook to fetch order book
 export function useOrderBook(
   symbol: string | null,
-  exchange: string | null,
+  exchange: SupportedExchange | null,
   depth: number = 20,
   enabled: boolean = true
 ) {
@@ -161,7 +201,7 @@ export function useOrderBook(
     },
     enabled: enabled && !!symbol && !!exchange,
     staleTime: 1 * 1000, // 1 second
-    cacheTime: 5 * 1000, // 5 seconds
+    gcTime: 5 * 1000, // 5 seconds
     refetchInterval: 2000, // Refetch every 2 seconds
   });
 }
@@ -169,7 +209,7 @@ export function useOrderBook(
 // Hook for real-time price updates
 export function useLivePrices(
   symbol: string | null,
-  exchange: string | null,
+  exchange: SupportedExchange | null,
   enabled: boolean = true
 ) {
   const [currentPrice, setCurrentPrice] = useState<TickerData | null>(null);
@@ -222,8 +262,8 @@ export function useLivePrices(
 // Hook for real-time candle updates
 export function useLiveCandles(
   symbol: string | null,
-  exchange: string | null,
-  timeframe: string | null,
+  exchange: SupportedExchange | null,
+  timeframe: SupportedTimeframe | null,
   onNewCandle?: (candle: Candle) => void,
   enabled: boolean = true
 ) {
@@ -254,12 +294,13 @@ export function useLiveCandles(
           }
 
           // Update cache with new candle
+          const liveRequest: MarketDataRequest | null =
+            symbol && exchange && timeframe
+              ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
+              : null;
+
           queryClient.setQueryData<MarketDataResponse>(
-            buildCandleQueryKey(
-              symbol && exchange && timeframe
-                ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
-                : null
-            ),
+            buildCandleQueryKey(liveRequest),
             (old) => {
               if (!old) return old;
               
@@ -325,17 +366,20 @@ export function useLiveCandles(
 // Hook to manage chart data with real-time updates
 export function useChartData(
   symbol: string | null,
-  exchange: string | null,
+  exchange: SupportedExchange | null,
   timeframe: string | null,
   enabled: boolean = true
 ) {
   const [candles, setCandles] = useState<Candle[]>([]);
-  
+
+  const request: MarketDataRequest | null =
+    symbol && exchange && isSupportedTimeframe(timeframe)
+      ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
+      : null;
+
   // Fetch historical data
   const { data: historicalData, isLoading, error } = useMarketCandles(
-    symbol && exchange && timeframe
-      ? { symbol, exchange, timeframe, limit: DEFAULT_LIMIT }
-      : null,
+    request,
     enabled
   );
 
@@ -343,7 +387,7 @@ export function useChartData(
   const { latestCandle, isConnected } = useLiveCandles(
     symbol,
     exchange,
-    timeframe,
+    isSupportedTimeframe(timeframe) ? timeframe : null,
     undefined,
     enabled
   );

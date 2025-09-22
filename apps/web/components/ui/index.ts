@@ -5,6 +5,7 @@ export * from './Input';
 export * from './Badge';
 export * from './Stat';
 export * from './WebhookStatus';
+export * from './TickerSearch';
 
 // New UI Components
 export * from './dropdown-menu';

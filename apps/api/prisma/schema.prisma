@@ -289,7 +289,6 @@ model BotStrategy {
   updatedAt   DateTime @updatedAt
 
   // Relations
-<<<<<<< HEAD
   bot             Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
   template        StrategyTemplate?   @relation(fields: [templateId], references: [id])
   indicators      StrategyIndicator[]
@@ -297,15 +296,6 @@ model BotStrategy {
   exitConditions  StrategyCondition[] @relation("ExitConditions")
   backtests       StrategyBacktest[]
   CoachRuleSet    CoachRuleSet[]
-
-=======
-  bot               Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
-  template          StrategyTemplate?   @relation(fields: [templateId], references: [id])
-  indicators        StrategyIndicator[]
-  conditions        StrategyCondition[]
-  backtests         StrategyBacktest[]
-  
->>>>>>> coaching
   @@index([botId])
   @@index([templateId])
 }
@@ -342,16 +332,9 @@ model StrategyCondition {
   createdAt       DateTime          @default(now())
 
   // Relations
-<<<<<<< HEAD
   strategy     BotStrategy        @relation("EntryConditions", fields: [strategyId], references: [id], onDelete: Cascade)
   exitStrategy BotStrategy?       @relation("ExitConditions", fields: [exitStrategyId], references: [id], onDelete: Cascade)
   indicator    StrategyIndicator? @relation(fields: [indicatorId], references: [id])
-
-=======
-  strategy          BotStrategy         @relation(fields: [strategyId], references: [id], onDelete: Cascade)
-  indicator         StrategyIndicator?  @relation(fields: [indicatorId], references: [id])
-  
->>>>>>> coaching
   @@index([strategyId, type])
   @@index([exitStrategyId])
 }

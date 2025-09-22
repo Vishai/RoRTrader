@@ -15,7 +15,7 @@ export function useIndicators() {
     queryKey: ['indicators'],
     queryFn: () => AnalysisService.getIndicators(),
     staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 }
 
@@ -32,7 +32,7 @@ export function useIndicatorCalculation(
     },
     enabled: enabled && !!request,
     staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -50,7 +50,7 @@ export function useBatchIndicators(
     },
     enabled: enabled && !!request,
     staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 1 * 60 * 1000, // 1 minute
     refetchInterval: refetchInterval || false,
   });
 }
@@ -185,14 +185,14 @@ export function useChartIndicators(
       data: response?.data,
       meta: response?.meta,
       success: response?.success,
-      isLoading: calculateIndicator.isLoading,
+      isLoading: calculateIndicator.isPending,
       error: calculateIndicator.error,
     };
   });
 
   return {
     indicators: results,
-    isLoading: calculateIndicator.isLoading,
+    isLoading: calculateIndicator.isPending,
     error: calculateIndicator.error,
     refetch: () => {
       indicators.forEach(indicator => {
